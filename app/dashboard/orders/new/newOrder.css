@@ -1,0 +1,305 @@
+/* PAGE */
+.new-order-page {
+  
+}
+
+/* BACK */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  margin-bottom: 18px;
+
+  text-decoration: none;
+
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.back-btn:hover {
+  color: #111827;
+}
+
+/* TITLE */
+.new-order-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    margin: 0px;
+}
+
+.new-order-desc {
+  font-size: 14px;
+  margin-top: 6px;
+  margin-bottom: 28px;
+  color: #6b7280;
+}
+
+/* FORM */
+.new-order-form {
+  max-width: 850px;
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+
+  padding: 24px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+
+  box-shadow:
+    0 8px 24px
+    rgba(0,0,0,0.04);
+}
+
+/* GROUP */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 600;
+
+  color: #111827;
+}
+
+/* INPUT */
+.form-group input,
+.form-group select {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  height: 50px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  padding: 0 14px;
+
+  font-size: 14px;
+
+  outline: none;
+
+  transition: 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: #006de2;
+  box-shadow:
+    0 0 0 4px
+    rgba(0,109,226,0.08);
+}
+
+/* GRID */
+.double-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.checkout-toast {
+  min-width: 320px;
+  max-width: 420px;
+  background: white;
+  border-radius: 22px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+ 
+  z-index: 9999;
+  animation: toastSlide 0.25s ease;
+}
+
+/* ERROR */
+.checkout-toast.error {
+  border-left: 5px solid #ef4444;
+}
+
+/* SUCCESS */
+.checkout-toast.success {
+  border-left: 5px solid #10b981;
+}
+.toast-left {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+.toast-icon {
+  width: 42px;
+  height: 42px;
+
+  border-radius: 14px;
+
+  background: #fef2f2;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+.toast-icon svg {
+  font-size: 20px;
+
+  color: #ef4444;
+}
+
+.toast-left p {
+  margin: 0;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  line-height: 1.5;
+
+  color: #111827;
+}
+
+/* CLOSE */
+.toast-close {
+  width: 34px;
+  height: 34px;
+
+  border: none;
+  border-radius: 12px;
+
+  background: transparent;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  transition: 0.2s;
+
+  flex-shrink: 0;
+}
+
+.toast-close:hover {
+  background: #f3f4f6;
+}
+
+.toast-close svg {
+  font-size: 18px;
+
+  color: #6b7280;
+}
+
+/* ANIMATION */
+@keyframes toastSlide {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(-16px)
+      scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+/* ACTIONS */
+.form-actions {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.cancel-btn,
+.save-btn {
+  padding: 10px 14px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.save-btn.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* CANCEL */
+.cancel-btn {
+  border: 1px solid #e5e7eb;
+  background: white;
+  color: #111827;
+}
+
+/* SAVE */
+.save-btn {
+  border: none;
+  background:
+    linear-gradient(
+      135deg,
+      #006de2,
+      #4f8cff
+    );
+  color: white;
+  box-shadow:
+    0 10px 30px
+    rgba(0,109,226,0.2);
+}
+
+/* RESPONSIVE */
+@media (min-width: 768px) {
+  /* TITLE */
+.new-order-title {
+    font-size: 32px;
+}
+
+.new-order-desc {
+  font-size: 16px;
+}
+
+  .double-grid {
+    grid-template-columns:
+      repeat(2,1fr);
+  }
+
+  .form-actions {
+    flex-direction: row-reverse;
+    justify-content: flex-start;
+  }
+
+  .cancel-btn,
+  .save-btn {
+    min-width: 160px;
+  }
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .checkout-toast {
+    min-width: auto;
+    max-width: none;
+  }
+}

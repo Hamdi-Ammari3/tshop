@@ -1,0 +1,651 @@
+"use client";
+
+import {
+  useMemo,
+  useState,
+} from "react";
+
+import Link from "next/link";
+
+import {
+  useRouter,
+} from "next/navigation";
+
+import {
+  addDoc,
+  collection,
+} from "firebase/firestore";
+
+import {
+  DB,
+} from "../../../../lib/firebaseConfig";
+
+import {
+  usePublicStore,
+} from "../../../../context/PublicStoreContext";
+
+import {
+  FiArrowLeft,
+  FiCheck,
+  FiLoader,
+  FiX,
+  FiAlertCircle,
+  FiTruck,
+  FiShield,
+} from "react-icons/fi";
+
+import "./checkout.css";
+
+export default function CheckoutPage() {
+
+  const router = useRouter();
+
+  const {
+    store,
+    cart,
+    cartSubtotal,
+    shippingFee,
+    cartTotal,
+    clearCart,
+  } = usePublicStore();
+
+  const [
+    clientName,
+    setClientName,
+  ] = useState("");
+
+  const [
+    clientPhone,
+    setClientPhone,
+  ] = useState("");
+
+  const [
+    clientAddress,
+    setClientAddress,
+  ] = useState("");
+
+  const [
+    notes,
+    setNotes,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    success,
+    setSuccess,
+  ] = useState(false);
+
+  const [
+    toast,
+    setToast,
+  ] = useState(null);
+
+  /* TOTAL ITEMS */
+  const totalItems =
+    useMemo(() => {
+
+      return cart.reduce(
+        (acc, item) =>
+          acc + item.quantity,
+        0
+      );
+
+    }, [cart]);
+
+  /* TOAST */
+  const showToast = (
+    message,
+    type = "error"
+  ) => {
+
+    setToast({
+      message,
+      type,
+    });
+
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
+
+  /* SUBMIT */
+  async function handleSubmit(e) {
+
+    e.preventDefault();
+
+    if (loading) return;
+
+    /* NAME */
+    if (
+      !clientName.trim()
+    ) {
+
+      showToast(
+        "Veuillez saisir votre nom complet"
+      );
+
+      return;
+    }
+
+    /* PHONE */
+    if (
+      !clientPhone.trim()
+    ) {
+
+      showToast(
+        "Veuillez saisir votre numéro"
+      );
+
+      return;
+    }
+
+    /* CLEAN */
+    const cleanPhone =
+      clientPhone.replace(
+        /\s/g,
+        ""
+      );
+
+    /* TUNISIA */
+    const tunisianPhoneRegex =
+      /^[259]\d{7}$/;
+
+    if (
+      !tunisianPhoneRegex.test(
+        cleanPhone
+      )
+    ) {
+
+      showToast(
+        "Le numéro doit contenir 8 chiffres et commencer par 2, 5 ou 9"
+      );
+
+      return;
+    }
+
+    /* ADDRESS */
+    if (
+      !clientAddress.trim()
+    ) {
+
+      showToast(
+        "Veuillez saisir votre adresse"
+      );
+
+      return;
+    }
+
+    try {
+
+      setLoading(true);
+
+      /* ITEMS */
+      const orderItems =
+        cart.map((item) => {
+
+          const unitPrice =
+            Number(item.price);
+
+          return {
+            productId: item.id,
+            productName:
+              item.name,
+            productImage:
+              item.images?.[0] ||
+              "",
+            quantity:
+              item.quantity,
+            unitPrice,
+            total:
+              unitPrice *
+              item.quantity,
+            shipping_fee:
+              Number(
+                item.shipping_fee || 0
+              ),
+          };
+        });
+
+      /* ORDER */
+      await addDoc(
+        collection(
+          DB,
+          "orders"
+        ),
+        {
+          storeId:
+            store.id,
+          storeName:
+            store.name,
+          storeSlug:
+            store.slug,
+
+          items:
+            orderItems,
+
+          itemsCount:
+            totalItems,
+
+          subtotal:
+            cartSubtotal,
+
+          shipping_fee:
+            shippingFee,
+
+          total_amount:
+            cartTotal,
+
+          clientName:
+            clientName.trim(),
+
+          clientPhone:
+            cleanPhone,
+
+          clientAddress:
+            clientAddress.trim(),
+
+          notes:
+            notes.trim(),
+
+          payment_method:
+            "cash_on_delivery",
+
+          status:
+            "pending",
+
+          createdAt:
+            new Date().toISOString(),
+        }
+      );
+
+      setSuccess(true);
+
+      clearCart();
+
+      setTimeout(() => {
+
+        router.push(
+          `/store/${store.slug}`
+        );
+
+      }, 2200);
+
+    } catch (error) {
+
+      console.log(error);
+
+      showToast(
+        "Une erreur est survenue"
+      );
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  }
+
+  /* EMPTY */
+  if (
+    cart.length === 0 &&
+    !success
+  ) {
+
+    return (
+      <div className="checkout-empty">
+
+        <h1>
+          Votre panier est vide
+        </h1>
+
+        <p>
+          Ajoutez des produits avant de passer commande.
+        </p>
+
+        <Link
+          href={`/store/${store.slug}`}
+          className="checkout-back-btn"
+        >
+
+          Retour à la boutique
+
+        </Link>
+
+      </div>
+    );
+  }
+
+  /* SUCCESS */
+  if (success) {
+
+    return (
+      <div className="checkout-success-page">
+
+        <div className="checkout-success-card">
+
+          <div className="success-icon">
+            <FiCheck />
+          </div>
+
+          <h1>
+            Commande confirmée
+          </h1>
+
+          <p>
+            Votre commande a été envoyée avec succès.
+          </p>
+
+          <span>
+            Redirection vers la boutique...
+          </span>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  return (
+    <div className="checkout-page">
+
+      {/* TOAST */}
+      {toast && (
+
+        <div
+          className={`checkout-toast ${toast.type}`}
+        >
+
+          <div className="toast-left">
+
+            <div className="toast-icon">
+              <FiAlertCircle />
+            </div>
+
+            <p>
+              {toast.message}
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            className="toast-close"
+            onClick={() =>
+              setToast(null)
+            }
+          >
+
+            <FiX />
+
+          </button>
+
+        </div>
+      )}
+
+      {/* TOP */}
+      <div className="checkout-top">
+
+        <Link
+          href={`/store/${store.slug}/cart`}
+          className="checkout-back"
+        >
+
+          <FiArrowLeft />
+
+          Retour au panier
+
+        </Link>
+
+        <div>
+
+          <h1>
+            Finaliser la commande
+          </h1>
+
+          <p>
+            Complétez vos informations de livraison
+          </p>
+
+        </div>
+
+      </div>
+
+      {/* LAYOUT */}
+      <div className="checkout-layout">
+
+        {/* FORM */}
+        <form
+          onSubmit={handleSubmit}
+          className="checkout-form"
+        >
+
+          <div className="checkout-card">
+
+            <h3>
+              Informations client
+            </h3>
+
+            {/* TRUST */}
+            <div className="checkout-trust">
+
+              <div>
+                <FiTruck />
+                Livraison rapide
+              </div>
+
+              <div>
+                <FiShield />
+                Paiement à la livraison
+              </div>
+
+            </div>
+
+            {/* NAME */}
+            <div className="form-group">
+
+              <label>
+                Nom complet
+              </label>
+
+              <input
+                type="text"
+                placeholder="Votre nom complet"
+                value={clientName}
+                onChange={(e) =>
+                  setClientName(
+                    e.target.value
+                  )
+                }
+              />
+
+            </div>
+
+            {/* GRID */}
+            <div className="double-grid">
+
+              <div className="form-group">
+
+                <label>
+                  Numéro de téléphone
+                </label>
+
+                <input
+                  type="tel"
+                  placeholder="21 234 567"
+                  value={clientPhone}
+                  onChange={(e) =>
+                    setClientPhone(
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+              <div className="form-group">
+
+                <label>
+                  Adresse de livraison
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="Votre adresse"
+                  value={clientAddress}
+                  onChange={(e) =>
+                    setClientAddress(
+                      e.target.value
+                    )
+                  }
+                />
+
+              </div>
+
+            </div>
+
+            {/* NOTES */}
+            <div className="form-group">
+
+              <label>
+                Notes (optionnel)
+              </label>
+
+              <textarea
+                rows="5"
+                placeholder="Informations supplémentaires"
+                value={notes}
+                onChange={(e) =>
+                  setNotes(
+                    e.target.value
+                  )
+                }
+              />
+
+            </div>
+
+          </div>
+
+          {/* BUTTON */}
+          <button
+            type="submit"
+            className="place-order-btn"
+            disabled={loading}
+          >
+
+            {loading ? (
+              <>
+                <FiLoader className="spin-icon" />
+                Traitement...
+              </>
+            ) : (
+              <>
+                Confirmer la commande
+              </>
+            )}
+
+          </button>
+
+        </form>
+
+        {/* SUMMARY */}
+        <div className="checkout-summary">
+
+          <div className="checkout-summary-card">
+
+            <h3>
+              Résumé de la commande
+            </h3>
+
+            {/* ITEMS */}
+            <div className="summary-items">
+
+              {cart.map((item) => (
+
+                <div
+                  key={item.id}
+                  className="summary-item"
+                >
+
+                  <div>
+
+                    <h4>
+                      {item.name}
+                    </h4>
+
+                    <p>
+                      Quantité :
+                      {" "}
+                      {item.quantity}
+                    </p>
+
+                  </div>
+
+                  <strong>
+                    {Number(
+                      item.price
+                    ) *
+                      item.quantity}
+                    {" "}
+                    TND
+                  </strong>
+
+                </div>
+              ))}
+
+            </div>
+
+            <div className="summary-divider"></div>
+
+            {/* ROW */}
+            <div className="summary-row">
+
+              <span>
+                Sous-total
+              </span>
+
+              <strong>
+                {cartSubtotal} TND
+              </strong>
+
+            </div>
+
+            <div className="summary-row">
+
+              <span>
+                Livraison
+              </span>
+
+              <strong>
+                {shippingFee} TND
+              </strong>
+
+            </div>
+
+            <div className="summary-divider"></div>
+
+            {/* TOTAL */}
+            <div className="summary-total">
+
+              <span>
+                Total
+              </span>
+
+              <h2>
+                {cartTotal} TND
+              </h2>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
