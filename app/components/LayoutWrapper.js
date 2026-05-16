@@ -20,7 +20,7 @@ export default function LayoutWrapper({ children }) {
 
       {children}
 
-      {!isDashboard && !isStorePreview && (
+      {!isDashboard && (
         <Footer />
       )}
 

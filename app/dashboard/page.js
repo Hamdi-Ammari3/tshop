@@ -1,59 +1,25 @@
 "use client";
 
 import { useState } from "react";
-
 import Link from "next/link";
-
 import { useStore } from "../../context/StoreContext";
-
 import { useDashboard } from "../../context/DashboardContext";
-
 import { logoutUser } from "../../lib/auth";
-
 import { useRouter } from "next/navigation";
-
-import {
-  FiBox,
-  FiExternalLink,
-  FiCopy,
-  FiCheck,
-  FiShoppingBag,
-  FiDollarSign,
-  FiPlus,
-  FiPhone,
-  FiLogOut,
-  FiAlertCircle,
-} from "react-icons/fi";
-
+import {FiBox,FiExternalLink,FiCopy,FiCheck,FiShoppingBag,FiDollarSign,FiPlus,FiPhone,FiLogOut,FiAlertCircle} from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
-
 import { ClipLoader } from "react-spinners";
-
 import "./dashboard.css";
 
 export default function DashboardHome() {
 
-  const {
-    store,
-    loading: storeLoading,
-  } = useStore();
-
-  const {
-    products,
-    orders,
-    loading,
-    pendingOrders,
-    completedOrders,
-    revenue,
-  } = useDashboard();
+  const {store,loading: storeLoading} = useStore();
+  const {products,orders,loading,pendingOrders,completedOrders,revenue} = useDashboard();
 
   const router = useRouter();
 
-  const [copied, setCopied] =
-    useState(false);
-
-  const [logoutLoading, setLogoutLoading] =
-    useState(false);
+  const [copied, setCopied] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   /* LOGOUT */
   const handleLogout = async () => {
@@ -193,12 +159,6 @@ export default function DashboardHome() {
       ? "warning"
       : "safe";
 
-  /* STORE URL */
-  const storeUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/store/${store.slug}`
-      : "";
-
   /* STATS */
   const stats = [
     {
@@ -229,25 +189,29 @@ export default function DashboardHome() {
     },
   ];
 
+  const isLocalhost =
+    typeof window !== "undefined" &&
+    window.location.hostname === "localhost";
+
+  const storeUrl = isLocalhost
+    ? `/store/${store.slug}`
+    : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
+
+  const copyStoreUrl = isLocalhost
+    ? `${window.location.origin}/store/${store.slug}`
+    : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
+
   /* COPY */
   const copyStoreLink = async () => {
-
     try {
-
-      await navigator.clipboard.writeText(
-        storeUrl
-      );
-
+      await navigator.clipboard.writeText(copyStoreUrl);
       setCopied(true);
-
       setTimeout(() => {
         setCopied(false);
       }, 1500);
 
     } catch (error) {
-
       console.log(error);
-
     }
   };
 
@@ -305,7 +269,7 @@ export default function DashboardHome() {
           <div className="store-link-box">
 
             <span className="store-domain">
-              {store.slug}.tunishop.com
+              {store.slug}.tunyshop.com
             </span>
 
             <button
@@ -520,7 +484,7 @@ export default function DashboardHome() {
 
       {/* BUTTON */}
       <Link
-        href={`/store/${store.slug}`}
+        href={storeUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="preview-btn"

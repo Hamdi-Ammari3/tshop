@@ -351,41 +351,6 @@ export default function CheckoutPage() {
 
   return (
     <div className="checkout-page">
-
-      {/* TOAST */}
-      {toast && (
-
-        <div
-          className={`checkout-toast ${toast.type}`}
-        >
-
-          <div className="toast-left">
-
-            <div className="toast-icon">
-              <FiAlertCircle />
-            </div>
-
-            <p>
-              {toast.message}
-            </p>
-
-          </div>
-
-          <button
-            type="button"
-            className="toast-close"
-            onClick={() =>
-              setToast(null)
-            }
-          >
-
-            <FiX />
-
-          </button>
-
-        </div>
-      )}
-
       {/* TOP */}
       <div className="checkout-top">
 
@@ -526,8 +491,35 @@ export default function CheckoutPage() {
               />
 
             </div>
-
           </div>
+
+          {/* TOAST */}
+          {toast && (
+
+            <div className={`checkout-toast ${toast.type}`}>
+              <div className="toast-left">
+
+                <div className="toast-icon">
+                  <FiAlertCircle />
+                </div>
+
+                <p>
+                  {toast.message}
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                className="toast-close"
+                onClick={() =>
+                  setToast(null)
+                }
+              >
+                <FiX />
+              </button>
+            </div>
+          )}
 
           {/* BUTTON */}
           <button

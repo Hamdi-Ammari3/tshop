@@ -50,48 +50,22 @@ body {
 
 /* LOGO */
 .navbar-logo {
-  text-decoration: none;
   display: flex;
   align-items: center;
+  text-decoration: none;
   flex-shrink: 0;
 }
 
-/* TEXT LOGO */
-.logo-text {
-  height: 42px;
-  padding: 0 14px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.6px;
-  color: #111827;
-  transition: 0.2s;
-  box-shadow: 0 6px 20px rgba(0,0,0,0.04);
+/* IMAGE */
+.navbar-logo-image {
+  width: 170px;
+  height: auto;
+
+  object-fit: contain;
+
+  display: block;
 }
 
-.navbar-logo:hover .logo-text {
-  transform: translateY(-1px);
-
-  box-shadow:
-    0 10px 26px rgba(0,0,0,0.06);
-}
-
-/* T LETTER */
-.logo-t {
-  margin-right: 2px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #006de2,
-      #4f8cff
-    );
-
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
 
 /* LINKS */
 .navbar-links {
@@ -157,12 +131,7 @@ body {
 }
 
 .dashboard-btn {
-  background:
-    linear-gradient(
-      135deg,
-      #006de2,
-      #4f8cff
-    );
+  background:linear-gradient(135deg,#006de2,#4f8cff);
 
   color: white;
 
@@ -182,13 +151,8 @@ body {
   height: 38px;
 
   border-radius: 999px;
-
-  background:
-    linear-gradient(
-      135deg,
-      #2563eb,
-      #1d4ed8
-    );
+  
+  background:linear-gradient(135deg,#006de2,#4f8cff);
 
   color: white;
 
@@ -827,14 +791,14 @@ body {
   gap: 20px;
 }
 
-.footer-links a {
+.footer-text a ,.footer-links a {
   text-decoration: none;
   font-size: 14px;
   color: #6b7280;
   transition: 0.2s;
 }
 
-.footer-links a:hover {
+.footer-text a:hover ,.footer-links a:hover {
   color: #111827;
 }
 
@@ -941,6 +905,10 @@ body {
 }
 
 @media (max-width: 768px) {
+
+  .navbar-logo-image {
+    width: 115px;
+  }
 
   .hero-title {
     font-size: 40px;

@@ -1,35 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
-
-import {
-  FiShoppingBag,
-  FiMenu,
-  FiX,
-  FiUser,
-  FiLogIn,
-  FiChevronRight,
-} from "react-icons/fi";
-
+import {FiMenu,FiX,FiLogIn,FiChevronRight} from "react-icons/fi";
 import { FaStore } from "react-icons/fa";
-
-import {
-  doc,
-  getDoc,
-} from "firebase/firestore";
-
+import {doc,getDoc} from "firebase/firestore";
 import { DB } from "../../lib/firebaseConfig";
+import logo from "../../public/website-logo.png"
 
 export default function Navbar() {
 
   const { user, loading } = useAuth();
 
   const [menuOpen, setMenuOpen] = useState(false);
-
   const [hasStore, setHasStore] = useState(false);
-
   const [checkingStore, setCheckingStore] = useState(true);
 
   const closeMenu = () => setMenuOpen(false);
@@ -83,10 +69,7 @@ export default function Navbar() {
   }, [user]);
 
   /* USER LETTER */
-  const userLetter =
-    user?.displayName
-      ?.charAt(0)
-      ?.toUpperCase() || "U";
+  const userLetter = user?.displayName?.charAt(0)?.toUpperCase() || "U";
 
   return (
     <header className="navbar">
@@ -98,12 +81,12 @@ export default function Navbar() {
           href="/"
           className="navbar-logo"
         >
-          <span className="logo-text">
-            <span className="logo-t">
-              T-
-            </span>
-            Shop
-          </span>
+          <Image
+            src={logo}
+            alt="T-Shop"
+            priority
+            className="navbar-logo-image"
+          />
         </Link>
 
         {/* DESKTOP LINKS */}
@@ -142,12 +125,9 @@ export default function Navbar() {
           )}
 
           {/* LOGGED */}
-          {!loading &&
-            user &&
-            !checkingStore && (
+          {!loading && user && !checkingStore && (
             <>
               {hasStore ? (
-
                 <Link
                   href="/dashboard"
                   className="dashboard-btn"
@@ -198,12 +178,7 @@ export default function Navbar() {
       </div>
 
       {/* MOBILE MENU */}
-      <div
-        className={`mobile-menu-wrapper ${
-          menuOpen ? "open" : ""
-        }`}
-      >
-
+      <div className={`mobile-menu-wrapper ${menuOpen ? "open" : ""}`}>
         <div className="mobile-menu">
 
           <a

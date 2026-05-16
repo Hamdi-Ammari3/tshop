@@ -339,7 +339,7 @@ export default function OrdersPage() {
                       </span>
 
                       <span>
-                        {item.unitPrice} TND
+                        {item.total} TND
                       </span>
 
                     </div>

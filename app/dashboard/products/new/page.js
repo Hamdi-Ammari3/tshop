@@ -16,7 +16,7 @@ export default function NewProductPage() {
   const { store } = useStore();
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(null);
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [hasDiscount, setHasDiscount] = useState(false);
@@ -24,6 +24,73 @@ export default function NewProductPage() {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const categories = [
+  {
+    slug: "mode",
+    label: "Mode",
+  },
+  {
+    slug: "beaute-bien-etre",
+    label: "Beauté & Bien-être",
+  },
+  {
+    slug: "electronique",
+    label: "Électronique",
+  },
+  {
+    slug: "maison-cuisine",
+    label: "Maison & Cuisine",
+  },
+  {
+    slug: "meubles",
+    label: "Meubles",
+  },
+  {
+    slug: "telephones-accessoires",
+    label: "Téléphones & Accessoires",
+  },
+  {
+    slug: "sante-bien-etre",
+    label: "Santé & Bien-être",
+  },
+  {
+    slug: "sport-fitness",
+    label: "Sport & Fitness",
+  },
+  {
+    slug: "bijoux-montres",
+    label: "Bijoux & Montres",
+  },
+  {
+    slug: "sacs-accessoires",
+    label: "Sacs & Accessoires",
+  },
+  {
+    slug: "jeux-gaming",
+    label: "Jeux & Gaming",
+  },
+  {
+    slug: "bebe-enfants",
+    label: "Bébé & Enfants",
+  },
+  {
+    slug: "automobile",
+    label: "Automobile",
+  },
+  {
+    slug: "livres-fournitures",
+    label: "Livres & Fournitures",
+  },
+  {
+    slug: "animalerie",
+    label: "Animalerie",
+  },
+  {
+    slug: "autre",
+    label: "Autre",
+  },
+];
 
   /* FORMAT PRICE */
   const formatPrice = (price) => {
@@ -201,69 +268,38 @@ export default function NewProductPage() {
 
     /* NAME */
     if (!name.trim()) {
-
-      showToast(
-        "Veuillez saisir le nom du produit."
-      );
-
+      showToast("Veuillez saisir le nom du produit.");
       return;
     }
 
     /* CATEGORY */
-    if (!category.trim()) {
-
-      showToast(
-        "Veuillez choisir une catégorie."
-      );
-
+    if (!category) {
+      showToast("Veuillez choisir une catégorie.");
       return;
     }
 
     /* PRICE */
-    if (
-      !price ||
-      Number(price) <= 0
-    ) {
-
-      showToast(
-        "Le prix doit être supérieur à 0."
-      );
-
+    if (!price || Number(price) <= 0) {
+      showToast("Le prix doit être supérieur à 0.");
       return;
     }
 
     /* DISCOUNT */
     if (hasDiscount) {
-
-      if (
-        !discountedPrice ||
-        Number(discountedPrice) <= 0
-      ) {
-
-        showToast(
-          "Veuillez saisir le prix promotionnel."
-        );
-
+      if (!discountedPrice ||Number(discountedPrice) <= 0) {
+        showToast("Veuillez saisir le prix promotionnel.");
         return;
       }
 
       if (Number(discountedPrice) >= Number(price)) {
-
-        showToast(
-          "Le prix promotionnel doit être inférieur au prix original."
-        );
-
+        showToast("Le prix promotionnel doit être inférieur au prix original.");
         return;
       }
     }
 
     /* DESCRIPTION */
     if (!description.trim()) {
-
-      showToast(
-        "Veuillez saisir une description."
-      );
-
+      showToast("Veuillez saisir une description.");
       return;
     }
 
@@ -313,56 +349,31 @@ export default function NewProductPage() {
           storeId: store.id,
           storeSlug: store.slug,
           storeName: store.name,
-          storeLogo:
-            store.logo || "",
-
+          storeLogo: store.logo || "",
           name: name.trim(),
-
-          category:
-            category.trim(),
-
-          description:
-            description.trim(),
-
-          price: hasDiscount
-            ? Number(discountedPrice)
-            : Number(price),
-
-          oldPrice: hasDiscount
-            ? Number(price)
-            : null,
-
+          category: category.label,
+          category_slug: category.slug,
+          description: description.trim(),
+          price: hasDiscount ? Number(discountedPrice) : Number(price),
+          oldPrice: hasDiscount ? Number(price) : null,
           hasDiscount,
-
           images: uploadedImages,
-
-          thumbnail:
-            uploadedImages[0],
-
-          shipping_fee: Number(
-            store?.shipping_fee || 8
-          ),
-
+          thumbnail: uploadedImages[0],
+          shipping_fee: Number(store?.shipping_fee || 8),
           stats: {
             ordersCount: 0,
             weeklyOrders: 0,
             views: 0,
             favorites: 0,
           },
-
           rating: {
             average: 0,
             count: 0,
             total: 0,
           },
-
           active: true,
-
-          createdAt:
-            serverTimestamp(),
-
-          updatedAt:
-            serverTimestamp(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         }
       );
 
@@ -559,40 +570,25 @@ export default function NewProductPage() {
             </label>
 
             <select
-              value={category}
-              onChange={(e) =>
-                setCategory(
-                  e.target.value
-                )
-              }
+              value={category?.slug || ""}
+              onChange={(e) => {
+                const selectedCategory = categories.find((cat) =>cat.slug === e.target.value);
+                setCategory(selectedCategory);
+              }}
             >
-
               <option value="">
                 Sélectionner
               </option>
 
-              <option>
-                Mode
-              </option>
-
-              <option>
-                Beauté
-              </option>
-
-              <option>
-                Électronique
-              </option>
-
-              <option>
-                Maison
-              </option>
-
-              <option>
-                Meubles
-              </option>
-
+              {categories.map((cat) => (
+                <option
+                  key={cat.slug}
+                  value={cat.slug}
+                >
+                  {cat.label}
+                </option>
+              ))}
             </select>
-
           </div>
 
           {/* PRICE */}
@@ -605,7 +601,6 @@ export default function NewProductPage() {
             <input
               type="number"
               min="0"
-              //step="0.001"
               placeholder="0.000"
               value={price}
               onChange={(e) =>

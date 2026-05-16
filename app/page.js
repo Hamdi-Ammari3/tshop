@@ -5,8 +5,6 @@ import { FiArrowRight } from "react-icons/fi";
 import { LuSparkles,LuRocket } from "react-icons/lu";
 import { HiOutlineGlobe } from "react-icons/hi";
 import { FaStar } from "react-icons/fa";
-import ProductCard from "./components/ProductCard";
-import {products} from '../data'
 
 export default function Home() {
 

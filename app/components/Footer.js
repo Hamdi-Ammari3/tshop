@@ -7,9 +7,9 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer-container">
 
-        <p className="footer-text">
-          © 2026 TuniShop — Made in Tunisia.
-        </p>
+        <div className="footer-text">
+          <Link href="/">© 2026 TuniShop — Made in Tunisia.</Link>
+        </div>
 
         <div className="footer-links">
           <Link href="/">Privacy</Link>

@@ -1,78 +1,42 @@
 "use client";
 
-import {
-  useState,
-  useEffect,
-} from "react";
-
+import {useState,useEffect} from "react";
 import Link from "next/link";
-
-import {
-  FiSearch,
-  FiShoppingCart,
-} from "react-icons/fi";
-
-import { usePublicStore }
-from "../../../context/PublicStoreContext";
-
+import {FiSearch,FiShoppingCart} from "react-icons/fi";
+import { usePublicStore } from "../../../context/PublicStoreContext";
 import StoreLoading from "./StoreLoading";
+import {FiLoader} from "react-icons/fi";
+import './store.css';
 
-export default function StoreShell({
-  children,
-}) {
+export default function StoreShell({children}) {
 
-  const {
-    store,
-    cartCount,
-    search,
-    setSearch,
-    loading,
-    storeFetched,
-  } = usePublicStore();
+  const {store,cartCount,search,setSearch,loading,storeFetched} = usePublicStore();
 
-  const [showContent,
-    setShowContent] =
-    useState(false);
+  const [showContent,setShowContent] = useState(false);
 
   useEffect(() => {
+    if (!loading && storeFetched) {
 
-    if (
-      !loading &&
-      storeFetched
-    ) {
+      const timer = setTimeout(() => {
+        setShowContent(true);
+      }, 120);
 
-      const timer =
-        setTimeout(() => {
-
-          setShowContent(
-            true
-          );
-
-        }, 120);
-
-      return () =>
-        clearTimeout(timer);
+      return () => clearTimeout(timer);
     }
 
-  }, [
-    loading,
-    storeFetched,
-  ]);
+  }, [loading,storeFetched]);
 
   /* LOADING */
-  if (
-    loading ||
-    !storeFetched ||
-    !showContent
-  ) {
-    return <StoreLoading />;
+  if (loading ||!storeFetched ||!showContent) {
+    return (
+      <div className="store-not-found">
+        <FiLoader className="spin-icon" />
+      </div>
+    )
   }
 
   /* NOT FOUND */
-  if (
-    storeFetched &&
-    !store
-  ) {
+  if (storeFetched && !store) {
     return (
       <div className="store-not-found">
 

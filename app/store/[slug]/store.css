@@ -21,20 +21,32 @@
     storeFade 0.25s ease;
 }
 
+/* SPIN */
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* LOADING */
 .store-loading,
 .store-not-found {
   min-height: 100vh;
-
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   gap: 14px;
-
   text-align: center;
-
   background: #f8fafc;
 }
 
@@ -864,5 +876,12 @@
 
   .hero-whatsapp-btn {
     width: 100%;
+  }
+  .store-not-found h1 {
+    font-size: 26px;
+  }
+
+  .store-not-found p {
+    font-size: 14px;
   }
 }
