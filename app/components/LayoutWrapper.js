@@ -5,22 +5,58 @@ import { usePathname } from "next/navigation";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-export default function LayoutWrapper({ children }) {
+export default function LayoutWrapper({
+  children,
+}) {
 
-  const pathname = usePathname();
+  const pathname =
+    usePathname();
 
-  const isDashboard = pathname.startsWith("/dashboard");
-  const isStorePreview = pathname.startsWith("/store/");
+  /* DASHBOARD */
+  const isDashboard =
+    pathname.startsWith(
+      "/dashboard"
+    );
+
+  /* DEV STORE PREVIEW */
+  const isStorePreview =
+    pathname.startsWith(
+      "/store/"
+    );
+
+  /* PROD STORE SUBDOMAIN */
+  const isSubdomainStore =
+    typeof window !==
+      "undefined" &&
+    window.location.hostname !==
+      "localhost" &&
+    window.location.hostname
+      .split(".").length > 2;
+
+  /* STORE WEBSITE */
+  const isStoreWebsite =
+    isStorePreview ||
+    isSubdomainStore;
+
+  /* NAVBAR */
+  const showNavbar =
+    !isDashboard &&
+    !isStoreWebsite;
+
+  /* FOOTER */
+  const showFooter =
+    !isDashboard;
 
   return (
     <>
-      {!isDashboard && !isStorePreview && (
+
+      {showNavbar && (
         <Navbar />
       )}
 
       {children}
 
-      {!isDashboard && (
+      {showFooter && (
         <Footer />
       )}
 
