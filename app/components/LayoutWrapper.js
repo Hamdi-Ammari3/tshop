@@ -18,45 +18,45 @@ export default function LayoutWrapper({
       "/dashboard"
     );
 
-  /* DEV STORE PREVIEW */
+  /* STORE PREVIEW DEV */
   const isStorePreview =
     pathname.startsWith(
       "/store/"
     );
 
-  /* PROD STORE SUBDOMAIN */
-  const isSubdomainStore =
+  /* CURRENT HOST */
+  const hostname =
     typeof window !==
-      "undefined" &&
-    window.location.hostname !==
-      "localhost" &&
-    window.location.hostname
-      .split(".").length > 2;
+      "undefined"
+      ? window.location.hostname
+      : "";
 
-  /* STORE WEBSITE */
-  const isStoreWebsite =
+  /* STORE SUBDOMAIN */
+  const isStoreSubdomain =
+    hostname.endsWith(
+      ".tunyshop.com"
+    ) &&
+    hostname !==
+      "tunyshop.com" &&
+    hostname !==
+      "www.tunyshop.com";
+
+  /* HIDE NAVBAR + FOOTER */
+  const hideLayout =
+    isDashboard ||
     isStorePreview ||
-    isSubdomainStore;
-
-  /* NAVBAR */
-  const showNavbar =
-    !isDashboard &&
-    !isStoreWebsite;
-
-  /* FOOTER */
-  const showFooter =
-    !isDashboard;
+    isStoreSubdomain;
 
   return (
     <>
 
-      {showNavbar && (
+      {!hideLayout && (
         <Navbar />
       )}
 
       {children}
 
-      {showFooter && (
+      {!hideLayout && (
         <Footer />
       )}
 
