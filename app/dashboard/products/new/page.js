@@ -189,19 +189,19 @@ export default function NewProductPage() {
       //COMPRESS + WEBP
       const compressedFile = await imageCompression(file,
         {
-          maxSizeMB: 0.7,
-          maxWidthOrHeight: 1200,
+          maxSizeMB: 0.6,
+          maxWidthOrHeight: 1000,
           useWebWorker: false, 
           //useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
           //fileType: "image/webp",
-          initialQuality: 0.75,
+          initialQuality: 0.7,
           preserveExif: false,
           alwaysKeepResolution: false,
         }
       );
 
       processedImages.push({
-        id: crypto.randomUUID(),
+        id: `${Date.now()}-${Math.random()}`,
         file: compressedFile,
         preview:
           URL.createObjectURL(
@@ -217,15 +217,9 @@ export default function NewProductPage() {
     ]);
 
   } catch (error) {
-
-    console.log(error);
-    showToast(error);
-    //alert("Error: " + error?.message + " | " + error?.name);
-
-    //showToast("Erreur lors du traitement des images.",error);
-
+    //console.log(error);
+    showToast(error?.message ||"Erreur lors du traitement des images.");
   }
-
 };
 
   /* REMOVE IMAGE */
