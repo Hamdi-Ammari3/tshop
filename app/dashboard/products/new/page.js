@@ -191,8 +191,9 @@ export default function NewProductPage() {
         {
           maxSizeMB: 0.7,
           maxWidthOrHeight: 1200,
-          useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
-          fileType: "image/webp",
+          useWebWorker: false, 
+          //useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
+          //fileType: "image/webp",
           initialQuality: 0.75,
           preserveExif: false,
           alwaysKeepResolution: false,
@@ -218,10 +219,10 @@ export default function NewProductPage() {
   } catch (error) {
 
     console.log(error);
+    showToast(error);
+    alert("Error: " + error?.message + " | " + error?.name);
 
-    showToast(
-      "Erreur lors du traitement des images."
-    );
+    //showToast("Erreur lors du traitement des images.",error);
 
   }
 

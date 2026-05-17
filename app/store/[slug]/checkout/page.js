@@ -307,7 +307,7 @@ export default function CheckoutPage() {
         </p>
 
         <Link
-          href={`/store/${store.slug}`}
+          href="/"
           className="checkout-back-btn"
         >
 
@@ -355,7 +355,7 @@ export default function CheckoutPage() {
       <div className="checkout-top">
 
         <Link
-          href={`/store/${store.slug}/cart`}
+          href="/cart"
           className="checkout-back"
         >
 
