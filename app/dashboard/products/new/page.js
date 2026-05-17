@@ -3,9 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {collection,addDoc,serverTimestamp} from "firebase/firestore";
-import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
-import imageCompression from "browser-image-compression";
-import { DB,storage } from "../../../../lib/firebaseConfig";
+import { DB } from "../../../../lib/firebaseConfig";
 import { uploadToCloudinary } from "../../../../lib/uploadToCloudinary";
 import {useStore} from "../../../../context/StoreContext";
 import Link from "next/link";
@@ -158,11 +156,20 @@ export default function NewProductPage() {
       continue;
     }
 
-    processedImages.push({
-      id: `${Date.now()}-${Math.random()}`,
-      file: file,  // raw file, no compression
-      preview: URL.createObjectURL(file),
-    });
+    // MOBILE SAFE PREVIEW
+    try {
+      const preview = URL.createObjectURL(file);
+
+      processedImages.push({
+        id: `${Date.now()}-${Math.random()}`,
+        file,
+        preview,
+      });
+
+    } catch (err) {
+      console.error("Preview error:", err);
+      showToast("Erreur lors de la prévisualisation.");
+    }
 
   }
 
