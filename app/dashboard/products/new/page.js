@@ -51,10 +51,6 @@ export default function NewProductPage() {
     label: "Téléphones & Accessoires",
   },
   {
-    slug: "sante-bien-etre",
-    label: "Santé & Bien-être",
-  },
-  {
     slug: "sport-fitness",
     label: "Sport & Fitness",
   },
@@ -116,60 +112,82 @@ export default function NewProductPage() {
   useEffect(() => {
     return () => {
       images.forEach((img) => {
-        URL.revokeObjectURL(
-          img.preview
-        );
+        if (img.preview?.startsWith("blob:")) {
+          URL.revokeObjectURL(img.preview);
+        }
       });
     };
   }, [images]);
 
-  /* HANDLE FILES */
   const handleFiles = (files) => {
-    if (!files) return;
 
-    const validFiles = Array.from(files).filter((file) => {
-      if (!file.type.startsWith("image/")) {
-        showToast("Veuillez sélectionner uniquement des images.");
-        return false;
+  if (!files) return;
+
+  const validFiles =
+    Array.from(files).filter(
+      (file) => {
+
+        if (
+          !file.type.startsWith(
+            "image/"
+          )
+        ) {
+
+          showToast(
+            "Veuillez sélectionner uniquement des images."
+          );
+
+          return false;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          showToast("Chaque image doit être inférieure à 5 MB.");
+          return false;
+        }
+
+        return true;
       }
+    );
 
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("Chaque image doit être inférieure à 5MB.");
-        return false;
-      }
+  const mapped =
+    validFiles.map((file) => ({
 
-      return true;
-    });
+      file,
 
-    const mapped =
-      validFiles.map((file) => ({
-        file,
-        preview:
-          URL.createObjectURL(file),
-      }));
+      preview:
+        URL.createObjectURL(
+          file
+        ),
 
-    setImages((prev) => {
+      id:
+        crypto.randomUUID(),
 
-      const merged = [
-        ...prev,
-        ...mapped,
-      ];
+    }));
 
-      return merged.slice(0, 10);
+  setImages((prev) => {
 
-    });
+    const merged = [
+      ...prev,
+      ...mapped,
+    ];
 
-  };
+    return merged.slice(0, 10);
+
+  });
+};
 
   /* REMOVE IMAGE */
   const removeImage = (index) => {
 
-    setImages((prev) =>
-      prev.filter(
-        (_, i) => i !== index
-      )
-    );
+    setImages((prev) => {
+      const imageToRemove = prev[index];
 
+      if (imageToRemove?.preview?.startsWith("blob:")) {
+        URL.revokeObjectURL(imageToRemove.preview);
+      }
+
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   /* THUMBNAIL */
@@ -187,65 +205,6 @@ export default function NewProductPage() {
       return copy;
 
     });
-
-  };
-
-  /* CONVERT WEBP */
-  const convertToWebP = async (
-    file
-  ) => {
-
-    return new Promise(
-      (resolve, reject) => {
-
-        const img = new Image();
-
-        img.src =
-          URL.createObjectURL(file);
-
-        img.onload = () => {
-
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
-
-          canvas.width = img.width;
-
-          canvas.height =
-            img.height;
-
-          const ctx =
-            canvas.getContext("2d");
-
-          ctx.drawImage(
-            img,
-            0,
-            0
-          );
-
-          canvas.toBlob(
-            (blob) => {
-
-              if (!blob) {
-
-                reject();
-
-                return;
-              }
-
-              resolve(blob);
-
-            },
-            "image/webp",
-            0.82
-          );
-        };
-
-        img.onerror = reject;
-
-      }
-    );
 
   };
 
@@ -307,45 +266,36 @@ export default function NewProductPage() {
 
       setLoading(true);
 
-      /* UPLOAD IMAGES */
-      const uploadedImages =
-        await Promise.all(
+      const uploadedImages = await Promise.all(
+        images.map(async (image) => {
 
-          images.map(
-            async (image) => {
+        //const fileExtension = image.file.name.split(".").pop();
+        const fileExtension = image.file.type.split("/")[1] || "jpg";
 
-              const webpBlob =
-                await convertToWebP(
-                  image.file
-                );
+        const fileName =
+          `${Date.now()}-${Math.random()
+            .toString(36)
+            .substring(2)}.${fileExtension}`;
 
-              const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.webp`;
+        const storageRef =
+          ref(
+            storage,
+            `products/${store.id}/${fileName}`
+          );
 
-              const storageRef =
-                ref(
-                  storage,
-                  `products/${store.id}/${fileName}`
-                );
-
-              await uploadBytes(
-                storageRef,
-                webpBlob,
-                {
-                  contentType: "image/webp",
-                }
-              );
-
-              return await getDownloadURL(
-                storageRef
-              );
-
-            }
-          )
+        await uploadBytes(
+          storageRef,
+          image.file
         );
 
-      await addDoc(
-        collection(DB, "products"),
-        {
+        return await getDownloadURL(
+          storageRef
+        );
+      }
+    )
+  );
+
+      await addDoc(collection(DB, "products"),{
           storeId: store.id,
           storeSlug: store.slug,
           storeName: store.name,
@@ -382,17 +332,10 @@ export default function NewProductPage() {
       );
 
     } catch (error) {
-
-      console.log(error);
-
-      showToast(
-        "Une erreur est survenue."
-      );
-
+      console.log("UPLOAD ERROR:",error);
+      showToast(error?.message ||"Une erreur est survenue.");
     } finally {
-
       setLoading(false);
-
     }
 
   };
@@ -452,13 +395,14 @@ export default function NewProductPage() {
               (image, index) => (
 
                 <div
-                  key={image.preview}
+                  key={image.id}
                   className="image-preview"
                 >
 
                   <img
                     src={image.preview}
-                    alt=""
+                    alt="Preview"
+                    className="preview-image"
                   />
 
                   {index === 0 && (
@@ -523,14 +467,13 @@ export default function NewProductPage() {
 
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
                   multiple
                   hidden
-                  onChange={(e) =>
-                    handleFiles(
-                      e.target.files
-                    )
-                  }
+                  onChange={(e) => {
+                    handleFiles(e.target.files); 
+                    e.target.value = ""
+                  }}
                 />
 
               </label>
@@ -552,9 +495,7 @@ export default function NewProductPage() {
             placeholder="Ex : Sac en cuir"
             value={name}
             maxLength={120}
-            onChange={(e) =>
-              setName(e.target.value)
-            }
+            onChange={(e) => setName(e.target.value.trimStart())}
           />
 
         </div>
@@ -762,11 +703,7 @@ export default function NewProductPage() {
             maxLength={3000}
             placeholder="Décrivez votre produit..."
             value={description}
-            onChange={(e) =>
-              setDescription(
-                e.target.value
-              )
-            }
+            onChange={(e) => setDescription(e.target.value.trimStart())}
           />
 
         </div>
@@ -817,7 +754,7 @@ export default function NewProductPage() {
             onClick={() => {
 
               setName("");
-              setCategory("");
+              setCategory(null);
               setDescription("");
               setPrice("");
               setDiscountedPrice("");

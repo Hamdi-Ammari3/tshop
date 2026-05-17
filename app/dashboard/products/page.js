@@ -2,13 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
-
-import { DB } from "../../../lib/firebaseConfig";
-
+import Image from "next/image";
+import {deleteDoc,doc} from "firebase/firestore";
+import {ref,deleteObject} from "firebase/storage";
+import { DB,storage } from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
 
@@ -51,40 +48,91 @@ export default function ProductsPage() {
   /* DELETE PRODUCT */
   async function handleDelete(productId) {
 
-    const confirmDelete = window.confirm(
-      "Voulez-vous vraiment supprimer ce produit ?"
+  const confirmDelete = window.confirm(
+    "Voulez-vous vraiment supprimer ce produit ?"
+  );
+
+  if (!confirmDelete) return;
+
+  if (deletingId) return;
+
+  try {
+
+    setDeletingId(productId);
+
+    /* FIND PRODUCT */
+    const product =
+      products.find(
+        (item) =>
+          item.id === productId
+      );
+
+    if (!product) {
+      throw new Error(
+        "Produit introuvable."
+      );
+    }
+
+    /* DELETE STORAGE IMAGES */
+    if (
+      product.images &&
+      product.images.length > 0
+    ) {
+
+      await Promise.all(
+
+        product.images.map(
+          async (imageUrl) => {
+
+            try {
+
+              const imageRef =
+                ref(
+                  storage,
+                  imageUrl
+                );
+
+              await deleteObject(
+                imageRef
+              );
+
+            } catch (error) {
+
+              console.log(
+                "Erreur suppression image:",
+                error
+              );
+
+            }
+
+          }
+        )
+      );
+    }
+
+    /* DELETE FIRESTORE DOC */
+    await deleteDoc(
+      doc(
+        DB,
+        "products",
+        productId
+      )
     );
 
-    if (!confirmDelete) return;
+  } catch (error) {
 
-    try {
+    console.log(error);
 
-      setDeletingId(productId);
+    alert(
+      "Une erreur est survenue lors de la suppression."
+    );
 
-      await deleteDoc(
-        doc(DB, "products", productId)
-      );
+  } finally {
 
-      //setProducts((prev) =>
-        //prev.filter(
-          //(item) => item.id !== productId
-        //)
-      //);
+    setDeletingId(null);
 
-    } catch (error) {
-
-      console.log(error);
-
-      alert(
-        "Une erreur est survenue lors de la suppression."
-      );
-
-    } finally {
-
-      setDeletingId(null);
-
-    }
   }
+}
 
   /* LOADING */
   if (loading || storeLoading) {
@@ -195,14 +243,16 @@ export default function ProductsPage() {
                 className="product-mobile-card"
               >
 
-                <img
+                <Image
                   src={
                     product.images?.[0]
                     || product.image
                     || "/placeholder.png"
                   }
                   alt={product.name}
-                  loading="lazy"
+                  width={70}
+                  height={70}
+                  unoptimized
                 />
 
                 {/* INFO */}
@@ -315,14 +365,16 @@ export default function ProductsPage() {
 
                       <div className="table-product">
 
-                        <img
+                        <Image
                           src={
                             product.images?.[0]
                             || product.image
                             || "/placeholder.png"
                           }
                           alt={product.name}
-                          loading="lazy"
+                          width={70}
+                          height={70}
+                          unoptimized
                         />
 
                         <span>

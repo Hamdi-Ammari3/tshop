@@ -1,41 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import Link from "next/link";
-
-import {
-  useParams,
-  useRouter,
-} from "next/navigation";
-
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
-
-import {
-  DB,
-  storage,
-} from "../../../../lib/firebaseConfig";
-
-import {
-  FiArrowLeft,
-  FiUpload,
-  FiX,
-  FiStar,
-  FiSave,
-  FiAlertCircle,
-} from "react-icons/fi";
-
+import Image from "next/image";
+import {useParams,useRouter} from "next/navigation";
+import {doc,getDoc,updateDoc,serverTimestamp} from "firebase/firestore";
+import {ref,uploadBytes,getDownloadURL} from "firebase/storage";
+import {DB,storage} from "../../../../lib/firebaseConfig";
+import {FiArrowLeft,FiUpload,FiX,FiStar,FiSave,FiAlertCircle} from "react-icons/fi";
 import "./editProduct.css";
 
 export default function EditProductPage() {
@@ -46,73 +18,88 @@ export default function EditProductPage() {
 
   const productId = params.id;
 
-  const [loading, setLoading] =
-    useState(true);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState(null);
+  const [description, setDescription] = useState("");
+  const [price, setPrice] = useState("");
+  const [hasDiscount,setHasDiscount] = useState(false);
+  const [discountedPrice,setDiscountedPrice] = useState("");
+  const [images, setImages] = useState([]);
+  const [toast, setToast] = useState(null);
+  const [storeId, setStoreId] = useState("");
 
-  const [saving, setSaving] =
-    useState(false);
-
-  const [name, setName] =
-    useState("");
-
-  const [category, setCategory] =
-    useState("");
-
-  const [description, setDescription] =
-    useState("");
-
-  const [price, setPrice] =
-    useState("");
-
-  const [
-    hasDiscount,
-    setHasDiscount,
-  ] = useState(false);
-
-  const [
-    discountedPrice,
-    setDiscountedPrice,
-  ] = useState("");
-
-  const [images, setImages] =
-    useState([]);
-
-  const [toast, setToast] =
-    useState(null);
-
-  const [storeId, setStoreId] =
-    useState("");
-
-  /* FORMAT PRICE */
-  const formatPrice = (value) => {
-
-    return new Intl.NumberFormat(
-      "fr-TN",
-      {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3,
-      }
-    ).format(Number(value || 0));
-
-  };
+  const categories = [
+  {
+    slug: "mode",
+    label: "Mode",
+  },
+  {
+    slug: "beaute-bien-etre",
+    label: "Beauté & Bien-être",
+  },
+  {
+    slug: "electronique",
+    label: "Électronique",
+  },
+  {
+    slug: "maison-cuisine",
+    label: "Maison & Cuisine",
+  },
+  {
+    slug: "meubles",
+    label: "Meubles",
+  },
+  {
+    slug: "telephones-accessoires",
+    label: "Téléphones & Accessoires",
+  },
+  {
+    slug: "sport-fitness",
+    label: "Sport & Fitness",
+  },
+  {
+    slug: "bijoux-montres",
+    label: "Bijoux & Montres",
+  },
+  {
+    slug: "sacs-accessoires",
+    label: "Sacs & Accessoires",
+  },
+  {
+    slug: "jeux-gaming",
+    label: "Jeux & Gaming",
+  },
+  {
+    slug: "bebe-enfants",
+    label: "Bébé & Enfants",
+  },
+  {
+    slug: "automobile",
+    label: "Automobile",
+  },
+  {
+    slug: "livres-fournitures",
+    label: "Livres & Fournitures",
+  },
+  {
+    slug: "animalerie",
+    label: "Animalerie",
+  },
+  {
+    slug: "autre",
+    label: "Autre",
+  },
+];
 
   /* TOAST */
-  const showToast = (
-    message,
-    type = "error"
-  ) => {
-
-    setToast({
-      message,
-      type,
-    });
+  const showToast = (message,type = "error") => {
+    setToast({message,type});
 
     setTimeout(() => {
-
       setToast(null);
-
     }, 3500);
-
   };
 
   /* FETCH PRODUCT */
@@ -122,77 +109,43 @@ export default function EditProductPage() {
 
       try {
 
-        const productRef = doc(
-          DB,
-          "products",
-          productId
-        );
+        const productRef = doc(DB,"products",productId);
 
-        const productSnap =
-          await getDoc(productRef);
+        const productSnap = await getDoc(productRef);
 
         if (!productSnap.exists()) {
-
-          showToast(
-            "Produit introuvable."
-          );
-
+          showToast("Produit introuvable.");
           return;
         }
 
-        const data =
-          productSnap.data();
+        const data = productSnap.data();
 
-        setStoreId(
-          data.storeId || ""
-        );
+        setStoreId(data.storeId || "");
+        setName(data.name || "");
 
-        setName(
-          data.name || ""
-        );
+        const matchedCategory = categories.find((cat) => cat.slug === data.category_slug);
+        setCategory(matchedCategory || null);
 
-        setCategory(
-          data.category || ""
-        );
-
-        setDescription(
-          data.description || ""
-        );
-
-        setHasDiscount(
-          data.hasDiscount || false
-        );
+        setDescription(data.description || "");
+        setHasDiscount(data.hasDiscount || false);
 
         /* CONSISTENT PRICE LOGIC */
         if (data.hasDiscount) {
-
-          setPrice(
-            data.oldPrice?.toString() || ""
-          );
-
-          setDiscountedPrice(
-            data.price?.toString() || ""
-          );
-
+          setPrice(data.oldPrice?.toString() || "");
+          setDiscountedPrice(data.price?.toString() || "");
         } else {
-
-          setPrice(
-            data.price?.toString() || ""
-          );
-
+          setPrice(data.price?.toString() || "");
           setDiscountedPrice("");
-
         }
 
         setImages(
-
           (data.images || []).map(
             (url) => ({
+              id: crypto.randomUUID(),
               preview: url,
               existing: true,
             })
           )
-
         );
 
       } catch (error) {
@@ -218,23 +171,26 @@ export default function EditProductPage() {
   /* CLEANUP */
   useEffect(() => {
 
-    return () => {
+  return () => {
 
-      images.forEach((img) => {
+    images.forEach((img) => {
 
-        if (!img.existing) {
+      if (
+        !img.existing &&
+        img.preview?.startsWith("blob:")
+      ) {
 
-          URL.revokeObjectURL(
-            img.preview
-          );
+        URL.revokeObjectURL(
+          img.preview
+        );
 
-        }
+      }
 
-      });
+    });
 
-    };
+  };
 
-  }, [images]);
+}, [images]);
 
   /* HANDLE FILES */
   const handleFiles = (files) => {
@@ -259,10 +215,7 @@ export default function EditProductPage() {
 
           }
 
-          if (
-            file.size >
-            5 * 1024 * 1024
-          ) {
+          if (file.size > 5 * 1024 * 1024) {
 
             showToast(
               "Chaque image doit être inférieure à 5 MB."
@@ -277,11 +230,10 @@ export default function EditProductPage() {
         }
       );
 
-    const mapped =
-      validFiles.map((file) => ({
+      const mapped = validFiles.map((file) => ({
+        id: crypto.randomUUID(),
         file,
-        preview:
-          URL.createObjectURL(file),
+        preview: URL.createObjectURL(file),
         existing: false,
       }));
 
@@ -343,67 +295,6 @@ export default function EditProductPage() {
 
   };
 
-  /* CONVERT WEBP */
-  const convertToWebP = async (
-    file
-  ) => {
-
-    return new Promise(
-      (resolve, reject) => {
-
-        const img = new Image();
-
-        img.src =
-          URL.createObjectURL(file);
-
-        img.onload = () => {
-
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
-
-          canvas.width = img.width;
-
-          canvas.height =
-            img.height;
-
-          const ctx =
-            canvas.getContext("2d");
-
-          ctx.drawImage(
-            img,
-            0,
-            0
-          );
-
-          canvas.toBlob(
-            (blob) => {
-
-              if (!blob) {
-
-                reject();
-
-                return;
-
-              }
-
-              resolve(blob);
-
-            },
-            "image/webp",
-            0.82
-          );
-
-        };
-
-        img.onerror = reject;
-
-      }
-    );
-
-  };
-
   /* SUBMIT */
   const handleSubmit = async (
     e
@@ -415,91 +306,47 @@ export default function EditProductPage() {
 
     /* IMAGES */
     if (images.length === 0) {
-
-      showToast(
-        "Veuillez ajouter des images."
-      );
-
+      showToast("Veuillez ajouter des images.");
       return;
 
     }
 
     /* NAME */
     if (!name.trim()) {
-
-      showToast(
-        "Veuillez saisir le nom du produit."
-      );
-
+      showToast("Veuillez saisir le nom du produit.");
       return;
-
     }
 
     /* CATEGORY */
-    if (!category.trim()) {
-
-      showToast(
-        "Veuillez choisir une catégorie."
-      );
-
+    if (!category) {
+      showToast("Veuillez choisir une catégorie.");
       return;
-
     }
 
     /* PRICE */
-    if (
-      !price ||
-      Number(price) <= 0
-    ) {
-
-      showToast(
-        "Le prix doit être supérieur à 0."
-      );
-
+    if (!price ||Number(price) <= 0) {
+      showToast("Le prix doit être supérieur à 0.");
       return;
-
     }
 
     /* DISCOUNT */
     if (hasDiscount) {
-
-      if (
-        !discountedPrice ||
-        Number(discountedPrice) <= 0
-      ) {
-
-        showToast(
-          "Veuillez saisir le prix promotionnel."
-        );
-
+      if (!discountedPrice ||Number(discountedPrice) <= 0) {
+        showToast("Veuillez saisir le prix promotionnel.");
         return;
-
       }
 
-      if (
-        Number(discountedPrice) >=
-        Number(price)
-      ) {
-
-        showToast(
-          "Le prix promotionnel doit être inférieur au prix original."
-        );
-
+      if (Number(discountedPrice) >= Number(price)) {
+        showToast("Le prix promotionnel doit être inférieur au prix original.");
         return;
-
       }
 
     }
 
     /* DESCRIPTION */
     if (!description.trim()) {
-
-      showToast(
-        "Veuillez saisir une description."
-      );
-
+      showToast("Veuillez saisir une description.");
       return;
-
     }
 
     try {
@@ -512,36 +359,18 @@ export default function EditProductPage() {
 
         /* EXISTING */
         if (image.existing) {
-
-          uploadedImages.push(
-            image.preview
-          );
-
+          uploadedImages.push(image.preview);
           continue;
 
         }
 
         /* NEW */
-        const webpBlob =
-          await convertToWebP(
-            image.file
-          );
+        //const fileExtension = image.file.name.split(".").pop();
+        const fileExtension = image.file.type.split("/")[1] || "jpg";
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
+        const storageRef = ref(storage,`products/${storeId}/${fileName}`);
 
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.webp`;
-
-        const storageRef = ref(
-          storage,
-          `products/${storeId}/${fileName}`
-        );
-
-        await uploadBytes(
-          storageRef,
-          webpBlob,
-          {
-            contentType:
-              "image/webp",
-          }
-        );
+        await uploadBytes(storageRef,image.file);
 
         const url =
           await getDownloadURL(
@@ -554,48 +383,21 @@ export default function EditProductPage() {
 
       /* UPDATE PRODUCT */
       await updateDoc(
-        doc(
-          DB,
-          "products",
-          productId
-        ),
-        {
-
+        doc(DB,"products",productId),{
           name: name.trim(),
-
-          category:
-            category.trim(),
-
-          description:
-            description.trim(),
-
-          /* CONSISTENT PRICING */
-          price: hasDiscount
-            ? Number(
-                discountedPrice
-              )
-            : Number(price),
-
-          oldPrice: hasDiscount
-            ? Number(price)
-            : null,
-
+          category: category.label,
+          category_slug: category.slug,
+          description: description.trim(),
+          price: hasDiscount ? Number(discountedPrice) : Number(price),
+          oldPrice: hasDiscount ? Number(price) : null,
           hasDiscount,
-
           images: uploadedImages,
-
-          thumbnail:
-            uploadedImages[0],
-
-          updatedAt:
-            serverTimestamp(),
-
+          thumbnail: uploadedImages[0],
+          updatedAt: serverTimestamp(),
         }
       );
 
-      router.push(
-        "/dashboard/products"
-      );
+      router.push("/dashboard/products");
 
     } catch (error) {
 
@@ -683,13 +485,16 @@ export default function EditProductPage() {
               (img, index) => (
 
                 <div
-                  key={`${img.preview}-${index}`}
+                  key={img.id}
                   className="image-card"
                 >
 
-                  <img
+                  <Image
                     src={img.preview}
-                    alt=""
+                    alt="Produit"
+                    fill
+                    sizes="140px"
+                    className="preview-image"
                   />
 
                   {index === 0 && (
@@ -760,14 +565,13 @@ export default function EditProductPage() {
 
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp,image/jpg"
                   multiple
                   hidden
-                  onChange={(e) =>
-                    handleFiles(
-                      e.target.files
-                    )
-                  }
+                  onChange={(e) => {
+                    handleFiles(e.target.files);
+                    e.target.value = "";
+                  }}
                 />
 
               </label>
@@ -810,38 +614,24 @@ export default function EditProductPage() {
             </label>
 
             <select
-              value={category}
-              onChange={(e) =>
-                setCategory(
-                  e.target.value
-                )
-              }
+              value={category?.slug || ""}
+              onChange={(e) => {
+                const selectedCategory = categories.find((cat) =>cat.slug === e.target.value);
+                setCategory(selectedCategory);
+              }}
             >
-
               <option value="">
                 Sélectionner
               </option>
 
-              <option>
-                Mode
-              </option>
-
-              <option>
-                Beauté
-              </option>
-
-              <option>
-                Électronique
-              </option>
-
-              <option>
-                Maison
-              </option>
-
-              <option>
-                Meubles
-              </option>
-
+              {categories.map((cat) => (
+                <option
+                  key={cat.slug}
+                  value={cat.slug}
+                >
+                  {cat.label}
+                </option>
+              ))}
             </select>
 
           </div>

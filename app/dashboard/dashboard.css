@@ -774,9 +774,6 @@
 
 /* IMAGE */
 .product-mobile-card img {
-  width: 70px;
-  height: 70px;
-
   border-radius: 14px;
 
   object-fit: cover;
