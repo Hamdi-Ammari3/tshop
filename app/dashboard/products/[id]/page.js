@@ -254,20 +254,18 @@ export default function EditProductPage() {
 
       }
 
-      /*
-      COMPRESS + WEBP
-      */
-      const compressedFile =
-        await imageCompression(
-          file,
-          {
-            maxSizeMB: 0.8,
-            maxWidthOrHeight: 1600,
-            useWebWorker: true,
-            fileType: "image/webp",
-            initialQuality: 0.8,
-          }
-        );
+      //COMPRESS + WEBP
+      const compressedFile = await imageCompression(file,
+        {
+          maxSizeMB: 0.7,
+          maxWidthOrHeight: 1200,
+          useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
+          fileType: "image/webp",
+          initialQuality: 0.75,
+          preserveExif: false,
+          alwaysKeepResolution: false,
+        }
+      );
 
       processedImages.push({
         id: crypto.randomUUID(),

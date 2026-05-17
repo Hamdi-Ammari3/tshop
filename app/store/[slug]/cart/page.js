@@ -52,7 +52,7 @@ export default function CartPage() {
           </p>
 
           <Link
-            href={`/store/${store.slug}`}
+            href="/"
             className="continue-shopping-btn"
           >
 
@@ -73,7 +73,7 @@ export default function CartPage() {
       <div className="cart-top">
 
         <Link
-          href={`/store/${store.slug}`}
+          href="/"
           className="back-store-btn"
         >
 
@@ -124,7 +124,7 @@ export default function CartPage() {
 
                 {/* IMAGE */}
                 <Link
-                  href={`/store/${store.slug}/product/${item.id}`}
+                  href={`/product/${item.id}`}
                   className="cart-item-image"
                 >
 
@@ -317,7 +317,7 @@ export default function CartPage() {
 
             {/* CHECKOUT */}
             <Link
-              href={`/store/${store.slug}/checkout`}
+              href="/checkout"
               className="checkout-btn"
             >
 

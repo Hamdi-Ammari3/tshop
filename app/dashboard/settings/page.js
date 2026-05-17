@@ -117,11 +117,13 @@ export default function SettingsPage() {
       await imageCompression(
         file,
         {
-          maxSizeMB: 0.5,
+          maxSizeMB: 0.7,
           maxWidthOrHeight: 1200,
-          useWebWorker: true,
+          useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
           fileType: "image/webp",
-          initialQuality: 0.8,
+          initialQuality: 0.75,
+          preserveExif: false,
+          alwaysKeepResolution: false,
         }
       );
 

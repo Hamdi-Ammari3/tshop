@@ -1,22 +1,38 @@
-import { NextResponse } from "next/server";
+import { NextResponse }
+from "next/server";
 
-export function middleware(request) {
+export function middleware(
+  request
+) {
 
-    const host = request.headers.get("host");
+  const host =
+    request.headers.get(
+      "host"
+    );
 
-    const url = request.nextUrl.clone();
+  const url =
+    request.nextUrl.clone();
 
-    const hostname = host?.split(":")[0];
+  const hostname =
+    host?.split(":")[0];
 
+  /*
+  LOCALHOST
+  */
   if (
     hostname === "localhost"
   ) {
+
     return NextResponse.next();
+
   }
 
   const parts =
     hostname.split(".");
 
+  /*
+  SUBDOMAIN
+  */
   if (parts.length > 2) {
 
     const subdomain =
@@ -26,14 +42,22 @@ export function middleware(request) {
       subdomain !== "www"
     ) {
 
+      /*
+      KEEP ORIGINAL PATH
+      */
       url.pathname =
-        `/store/${subdomain}`;
+        `/store/${subdomain}${url.pathname}`;
 
-      return NextResponse.rewrite(url);
+      return NextResponse.rewrite(
+        url
+      );
+
     }
+
   }
 
   return NextResponse.next();
+
 }
 
 export const config = {

@@ -185,7 +185,6 @@ const prevImage = (
         )}
 
         {/* GRID */}
-        {/* GRID */}
 <div className="store-products-grid">
 
   {filteredProducts.map((product) => {

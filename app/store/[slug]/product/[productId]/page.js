@@ -148,9 +148,7 @@ export default function ProductPage() {
           quantity
         );
 
-        router.push(
-          `/store/${slug}/checkout`
-        );
+        router.push("/checkout");
 
       } finally {
 
@@ -184,7 +182,7 @@ export default function ProductPage() {
       <div className="product-top">
 
         <Link
-          href={`/store/${slug}`}
+          href="/"
           className="back-store-btn"
         >
 
@@ -421,20 +419,3 @@ export default function ProductPage() {
     </div>
   );
 }
-
-/*
-          {store.hasWhatsapp && (
-            <a
-              href={`https://wa.me/216${store.phone}?text=Bonjour, je souhaite commander ${product.name}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="product-whatsapp-btn"
-            >
-
-              <FaWhatsapp />
-
-              Commander sur WhatsApp
-
-            </a>
-          )}
-*/

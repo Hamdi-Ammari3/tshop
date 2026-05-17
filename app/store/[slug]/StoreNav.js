@@ -63,7 +63,7 @@ export default function StoreShell({children}) {
         <div className="store-navbar-left">
 
           <Link
-            href={`/store/${store.slug}`}
+            href="/"
             className="store-brand"
           >
 
@@ -118,7 +118,7 @@ export default function StoreShell({children}) {
         <div className="store-navbar-actions">
 
           <Link
-            href={`/store/${store.slug}/cart`}
+            href="/cart"
             className="store-cart-btn"
           >
 
