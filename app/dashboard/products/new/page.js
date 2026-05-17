@@ -6,6 +6,7 @@ import {collection,addDoc,serverTimestamp} from "firebase/firestore";
 import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
 import imageCompression from "browser-image-compression";
 import { DB,storage } from "../../../../lib/firebaseConfig";
+import { uploadToCloudinary } from "../../../../lib/uploadToCloudinary";
 import {useStore} from "../../../../context/StoreContext";
 import Link from "next/link";
 import {FiArrowLeft,FiUpload,FiX,FiStar,FiAlertCircle} from "react-icons/fi";
@@ -136,91 +137,37 @@ export default function NewProductPage() {
 
   if (!files) return;
 
-  const selectedFiles =
-    Array.from(files);
+  const selectedFiles = Array.from(files);
 
-  if (
-    images.length +
-    selectedFiles.length >
-    10
-  ) {
-
-    showToast(
-      "Maximum 10 images."
-    );
-
+  if (images.length + selectedFiles.length > 10) {
+    showToast("Maximum 10 images.");
     return;
   }
 
-  try {
+  const processedImages = [];
 
-    const processedImages = [];
+  for (const file of selectedFiles) {
 
-    for (const file of selectedFiles) {
-
-      if (
-        !file.type.startsWith(
-          "image/"
-        )
-      ) {
-
-        showToast(
-          "Veuillez sélectionner uniquement des images."
-        );
-
-        continue;
-      }
-
-      /*
-      MOBILE SAFE: allow larger originals because we compress later
-      */
-      if (
-        file.size >
-        15 * 1024 * 1024
-      ) {
-
-        showToast(
-          "Image trop volumineuse."
-        );
-
-        continue;
-      }
-
-      //COMPRESS + WEBP
-      const compressedFile = await imageCompression(file,
-        {
-          maxSizeMB: 0.6,
-          maxWidthOrHeight: 1000,
-          useWebWorker: false, 
-          //useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
-          //fileType: "image/webp",
-          initialQuality: 0.7,
-          preserveExif: false,
-          alwaysKeepResolution: false,
-        }
-      );
-
-      processedImages.push({
-        id: `${Date.now()}-${Math.random()}`,
-        file: compressedFile,
-        preview:
-          URL.createObjectURL(
-            compressedFile
-          ),
-      });
-
+    if (!file.type.startsWith("image/")) {
+      showToast("Veuillez sélectionner uniquement des images.");
+      continue;
     }
 
-    setImages((prev) => [
-      ...prev,
-      ...processedImages,
-    ]);
+    if (file.size > 15 * 1024 * 1024) {
+      showToast("Image trop volumineuse (max 15MB).");
+      continue;
+    }
 
-  } catch (fileError) {
-    const msg = fileError?.message || fileError?.toString() || "unknown";
-    console.error("Failed on file:", file.name, msg, fileError);
-    showToast(`Erreur: ${msg}`); // real error visible on screen
+    processedImages.push({
+      id: `${Date.now()}-${Math.random()}`,
+      file: file,  // raw file, no compression
+      preview: URL.createObjectURL(file),
+    });
+
   }
+
+  setImages((prev) => [...prev, ...processedImages]);
+
 };
 
   /* REMOVE IMAGE */
@@ -315,112 +262,28 @@ export default function NewProductPage() {
 
       const uploadedImages = [];
 
-for (
-  let i = 0;
-  i < images.length;
-  i++
-) {
+for (let i = 0; i < images.length; i++) {
 
   const image = images[i];
-
   setCurrentUploadIndex(i + 1);
 
-  const fileName =
-    `${Date.now()}-${crypto.randomUUID()}.webp`;
-
-  const storageRef = ref(
-    storage,
-    `products/${store.id}/${fileName}`
+  const url = await uploadToCloudinary(
+    image.file,
+    (percent) => {
+      // GLOBAL PROGRESS
+      const totalProgress = ((i + percent / 100) / images.length) * 100;
+      setUploadProgress(Math.round(totalProgress));
+    }
   );
 
-  const uploadTask =
-    uploadBytesResumable(
-      storageRef,
-      image.file,
-      {
-        contentType:
-          "image/webp",
-      }
-    );
-
-  const downloadURL =
-    await new Promise(
-      (resolve, reject) => {
-
-        const timeout =
-          setTimeout(() => {
-
-            reject(
-              new Error(
-                "Timeout upload"
-              )
-            );
-
-          }, 45000);
-
-        uploadTask.on(
-          "state_changed",
-
-          (snapshot) => {
-
-            const progress =
-              (
-                snapshot.bytesTransferred /
-                snapshot.totalBytes
-              ) * 100;
-
-            /*
-            GLOBAL PROGRESS
-            */
-            const totalProgress =
-              (
-                (
-                  i +
-                  progress / 100
-                ) /
-                images.length
-              ) * 100;
-
-            setUploadProgress(
-              Math.round(
-                totalProgress
-              )
-            );
-
-          },
-
-          (error) => {
-
-            clearTimeout(
-              timeout
-            );
-
-            reject(error);
-
-          },
-
-          async () => {
-
-            clearTimeout(
-              timeout
-            );
-
-            const url =
-              await getDownloadURL(
-                uploadTask.snapshot.ref
-              );
-
-            resolve(url);
-
-          }
-        );
-
-      }
-    );
-
-  uploadedImages.push(
-    downloadURL
+  // GET WEBP VERSION AUTOMATICALLY
+  // Just inject transformation into the Cloudinary URL
+  const webpUrl = url.replace(
+    "/upload/",
+    "/upload/f_webp,q_auto,w_1200/"
   );
+
+  uploadedImages.push(webpUrl);
 
 }
 
