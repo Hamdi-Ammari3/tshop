@@ -3,10 +3,11 @@
 import { useState,useRef,useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import imageCompression from "browser-image-compression";
 import { signInWithGoogle } from "../../lib/auth";
-import { DB } from "../../lib/firebaseConfig";
-import {uploadImage} from "../../lib/storage"
+import { DB,storage } from "../../lib/firebaseConfig";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
 import { useAuth } from "../../context/AuthContext";
 import { useStore } from "../../context/StoreContext";
 import { FiArrowLeft, FiUpload, FiCheck, FiShoppingBag,FiX,FiAlertCircle } from "react-icons/fi";
@@ -22,6 +23,8 @@ export default function Onboarding() {
     const [hasWhatsapp, setHasWhatsapp] = useState(true);
     const [logoFile, setLogoFile] = useState(null);
     const [logoPreview, setLogoPreview] = useState(null);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [processingImage, setProcessingImage] = useState(false);
     const logoInputRef = useRef(null);
 
     const [checkingSlug, setCheckingSlug] = useState(false);
@@ -97,72 +100,122 @@ export default function Onboarding() {
     }, [slug]);
 
     //Upload image
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
+    const handleImageChange = async (e) => {
 
-        const MAX_SIZE = 5 * 1024 * 1024;
+  const file =
+    e.target.files?.[0];
 
-        if (!file.type.startsWith("image/")) {
-            showToast("Veuillez sélectionner une image");
-            return;
+  if (!file) return;
+
+  try {
+
+    setProcessingImage(true);
+
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+
+      showToast(
+        "Veuillez sélectionner une image"
+      );
+
+      return;
+
+    }
+
+    /*
+    Allow larger originals
+    because compression happens after
+    */
+    if (
+      file.size >
+      15 * 1024 * 1024
+    ) {
+
+      showToast(
+        "Image trop volumineuse"
+      );
+
+      return;
+
+    }
+
+    const compressedFile =
+      await imageCompression(
+        file,
+        {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1200,
+          useWebWorker: true,
+          fileType: "image/webp",
+          initialQuality: 0.8,
         }
+      );
 
-        if (file.size > MAX_SIZE) {
-            showToast("Image trop volumineuse (5MB max)");
-            return;
-        }
+    if (
+      logoPreview?.startsWith(
+        "blob:"
+      )
+    ) {
 
-        setLogoFile(file);
-        setLogoPreview(URL.createObjectURL(file));
-    };
+      URL.revokeObjectURL(
+        logoPreview
+      );
 
-    //Convert image to webp
-    const convertToWebP = (file) => {
-        return new Promise((resolve, reject) => {
-            const image = new Image();
-            image.src = URL.createObjectURL(file);
+    }
 
-            image.onload = () => {
-                const canvas = document.createElement("canvas");
-                canvas.width = image.width;
-                canvas.height = image.height;
-                const ctx = canvas.getContext("2d");
-                ctx.drawImage(image, 0, 0);
+    const previewUrl =
+      URL.createObjectURL(
+        compressedFile
+      );
 
-                canvas.toBlob((blob) => {
+    setLogoFile(
+      compressedFile
+    );
 
-                    if (!blob) {
-                        reject(new Error("WebP conversion failed"));
-                        return;
-                    }
+    setLogoPreview(
+      previewUrl
+    );
 
-                    const webpFile = new File(
-                        [blob],
-                        file.name.replace(/\.\w+$/, ".webp"),
-                        {
-                            type: "image/webp",
-                        }
-                    );
+  } catch (error) {
 
-                    resolve(webpFile);
+    console.log(error);
 
-                },
-                "image/webp",
-                0.8
-            );
-        };
+    showToast(
+      "Erreur lors du traitement de l'image"
+    );
 
-        image.onerror = reject;
-    })};
+  } finally {
 
-    useEffect(() => {
-        return () => {
-            if (logoPreview) {
-                URL.revokeObjectURL(logoPreview);
-            }
-        };
-    }, [logoPreview]);
+    setProcessingImage(false);
+
+    e.target.value = "";
+
+  }
+
+};
+
+useEffect(() => {
+
+  return () => {
+
+    if (
+      logoPreview?.startsWith(
+        "blob:"
+      )
+    ) {
+
+      URL.revokeObjectURL(
+        logoPreview
+      );
+
+    }
+
+  };
+
+}, []);
 
     //Toast message
     const showToast = (message,type = "error") => {
@@ -229,10 +282,86 @@ export default function Onboarding() {
             /* UPLOADS */
             let logoUrl = "";
 
-            if (logoFile) {
-                const webpLogo = await convertToWebP(logoFile);
-                logoUrl = await uploadImage(webpLogo,`stores/${slug}/logo.webp`);
-            }
+              if (logoFile) {
+
+  const storageRef = ref(
+    storage,
+    `stores/${slug}/logo.webp`
+  );
+
+  const uploadTask =
+    uploadBytesResumable(
+      storageRef,
+      logoFile,
+      {
+        contentType:
+          "image/webp",
+      }
+    );
+
+  logoUrl =
+    await new Promise(
+      (
+        resolve,
+        reject
+      ) => {
+
+        const timeout =
+          setTimeout(() => {
+
+            reject(
+              new Error(
+                "Upload timeout"
+              )
+            );
+
+          }, 45000);
+
+        uploadTask.on(
+
+          "state_changed",
+
+          (snapshot) => {
+
+            const progress =
+              (
+                snapshot.bytesTransferred /
+                snapshot.totalBytes
+              ) * 100;
+
+            setUploadProgress(
+              Math.round(progress)
+            );
+
+          },
+
+          (error) => {
+
+            clearTimeout(timeout);
+
+            reject(error);
+
+          },
+
+          async () => {
+
+            clearTimeout(timeout);
+
+            const url =
+              await getDownloadURL(
+                uploadTask.snapshot.ref
+              );
+
+            resolve(url);
+
+          }
+
+        );
+
+      }
+    );
+
+}
 
             const createdAt = new Date();
 
@@ -318,7 +447,8 @@ export default function Onboarding() {
             console.error(err);
             showToast("Something went wrong");
         } finally {
-            setSubmitting(false);
+          setSubmitting(false);
+          setUploadProgress(0)
         }
     };
 
@@ -442,7 +572,19 @@ export default function Onboarding() {
               }
             >
 
-              {logoPreview ? (
+              {processingImage ? (
+
+  <div className="upload-processing">
+
+    <div className="upload-spinner"></div>
+
+    <span>
+      Compression...
+    </span>
+
+  </div>
+
+) : logoPreview ? (
                 <img
                   src={logoPreview}
                   alt="logo"
@@ -569,8 +711,12 @@ export default function Onboarding() {
         >
 
           {submitting ? (
-            "Création..."
-          ) : (
+  <>
+    Création...
+    {uploadProgress > 0 &&
+      ` ${uploadProgress}%`}
+  </>
+) : (
             <>
               Créer ma boutique
             </>

@@ -588,5 +588,32 @@
     min-width: auto;
     max-width: none;
   }
+}
 
+.upload-processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.upload-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 3px solid #dbeafe;
+  border-top-color: #006de2;
+  animation: spin 0.7s linear infinite;
+}
+
+.submit-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.upload-area img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }

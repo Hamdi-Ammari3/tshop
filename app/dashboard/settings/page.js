@@ -1,30 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  FiUpload,
-  FiSave,
-  FiPhone,
-  FiTruck,
-  FiCheckCircle,
-} from "react-icons/fi";
-
+import {FiUpload,FiSave,FiPhone,FiTruck,FiCheckCircle,FiX,FiAlertCircle} from "react-icons/fi";
+import imageCompression from "browser-image-compression";
 import { doc, updateDoc } from "firebase/firestore";
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "firebase/storage";
-
-import {
-  DB,
-  storage,
-} from "../../../lib/firebaseConfig";
-
+import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
+import {DB,storage} from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
-
 import { ClipLoader } from "react-spinners";
-
 import "./settings.css";
 
 export default function SettingsPage() {
@@ -33,18 +16,14 @@ export default function SettingsPage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [hasWhatsapp, setHasWhatsapp] =
-    useState(false);
-
-  const [shippingFee, setShippingFee] =
-    useState(8);
-
+  const [hasWhatsapp, setHasWhatsapp] = useState(false);
+  const [shippingFee, setShippingFee] = useState(8);
   const [logo, setLogo] = useState("");
-  const [logoFile, setLogoFile] =
-    useState(null);
-
-  const [loading, setLoading] =
-    useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [processingImage, setProcessingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [toast, setToast] = useState(null);
 
   /* LOAD STORE DATA */
   useEffect(() => {
@@ -66,120 +45,129 @@ export default function SettingsPage() {
 
   }, [store]);
 
-  /* CONVERT IMAGE TO WEBP */
-  async function convertToWebP(file) {
+  useEffect(() => {
 
-    return new Promise((resolve, reject) => {
+  return () => {
 
-      try {
+    if (
+      logo?.startsWith(
+        "blob:"
+      )
+    ) {
 
-        const img = new Image();
+      URL.revokeObjectURL(
+        logo
+      );
 
-        img.src =
-          URL.createObjectURL(file);
+    }
 
-        img.onload = () => {
+  };
 
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
+}, []);
 
-          canvas.width = img.width;
-          canvas.height = img.height;
+  /* TOAST */
+  const showToast = (message,type = "error") => {
+    setToast({message,type});
 
-          const ctx =
-            canvas.getContext("2d");
-
-          ctx.drawImage(
-            img,
-            0,
-            0
-          );
-
-          canvas.toBlob(
-            (blob) => {
-
-              if (!blob) {
-                reject(
-                  new Error(
-                    "Erreur de conversion image"
-                  )
-                );
-
-                return;
-              }
-
-              const webpFile =
-                new File(
-                  [blob],
-                  `${Date.now()}.webp`,
-                  {
-                    type:
-                      "image/webp",
-                  }
-                );
-
-              resolve(webpFile);
-            },
-            "image/webp",
-            0.8
-          );
-        };
-
-        img.onerror = () => {
-          reject(
-            new Error(
-              "Image invalide"
-            )
-          );
-        };
-
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
 
   /* HANDLE LOGO */
-  const handleLogoChange = (e) => {
+  const handleLogoChange = async (e) => {
 
-    const file =
-      e.target.files?.[0];
+  const file =
+    e.target.files?.[0];
 
-    if (!file) return;
+  if (!file) return;
 
-    /* VALIDATE IMAGE */
+  try {
+
+    setProcessingImage(true);
+
     if (
       !file.type.startsWith(
         "image/"
       )
     ) {
-      alert(
-        "Veuillez sélectionner une image valide."
-      );
+
+      showToast("Veuillez sélectionner une image valide.");
 
       return;
+
     }
 
-    /* LIMIT SIZE */
+    /*
+    Allow larger originals
+    because compression happens later
+    */
     if (
       file.size >
-      5 * 1024 * 1024
+      15 * 1024 * 1024
     ) {
-      alert(
-        "La taille de l'image doit être inférieure à 5MB."
-      );
+
+      showToast("Image trop volumineuse.");
 
       return;
+
     }
 
-    setLogo(
-      URL.createObjectURL(file)
+    const compressedFile =
+      await imageCompression(
+        file,
+        {
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1200,
+          useWebWorker: true,
+          fileType: "image/webp",
+          initialQuality: 0.8,
+        }
+      );
+
+    /*
+    CLEAN OLD BLOB
+    */
+    if (
+      logo?.startsWith(
+        "blob:"
+      )
+    ) {
+
+      URL.revokeObjectURL(
+        logo
+      );
+
+    }
+
+    const previewUrl =
+      URL.createObjectURL(
+        compressedFile
+      );
+
+    setLogo(previewUrl);
+
+    setLogoFile(
+      compressedFile
     );
 
-    setLogoFile(file);
-  };
+  } catch (error) {
+
+    console.log(error);
+
+    showToast("Erreur lors du traitement de l'image.");
+
+  } finally {
+
+    setProcessingImage(false);
+
+    e.target.value = "";
+
+  }
+
+};
+
+  const tunisianPhoneRegex = /^(2|4|5|9)\d{7}$/;
 
   /* SAVE SETTINGS */
   async function handleSubmit(e) {
@@ -187,21 +175,18 @@ export default function SettingsPage() {
     e.preventDefault();
 
     if (!name.trim()) {
-      alert(
-        "Veuillez saisir le nom de la boutique."
-      );
+      showToast("Veuillez saisir le nom de la boutique.");
 
       return;
     }
 
-    if (
-      phone &&
-      phone.length !== 8
-    ) {
-      alert(
-        "Le numéro doit contenir 8 chiffres."
-      );
+    if (!phone.trim()) {
+      showToast("Veuillez saisir un numéro de téléphone.");
+      return;
+    }
 
+    if (!tunisianPhoneRegex.test(phone)) {
+      showToast("Veuillez saisir un numéro tunisien valide.");
       return;
     }
 
@@ -213,26 +198,82 @@ export default function SettingsPage() {
 
       /* UPLOAD LOGO */
       if (logoFile) {
-
-        const webpLogo =
-          await convertToWebP(
-            logoFile
-          );
-
         const logoRef = ref(
-          storage,
-          `stores/${store.id}/logo.webp`
-        );
+  storage,
+  `stores/${store.id}/logo.webp`
+);
 
-        await uploadBytes(
-          logoRef,
-          webpLogo
-        );
+const uploadTask =
+  uploadBytesResumable(
+    logoRef,
+    logoFile,
+    {
+      contentType:
+        "image/webp",
+    }
+  );
 
-        logoUrl =
-          await getDownloadURL(
-            logoRef
+logoUrl =
+  await new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+
+      const timeout =
+        setTimeout(() => {
+
+          reject(
+            new Error(
+              "Upload timeout"
+            )
           );
+
+        }, 45000);
+
+      uploadTask.on(
+
+        "state_changed",
+
+        (snapshot) => {
+
+          const progress =
+            (
+              snapshot.bytesTransferred /
+              snapshot.totalBytes
+            ) * 100;
+
+          setUploadProgress(
+            Math.round(progress)
+          );
+
+        },
+
+        (error) => {
+
+          clearTimeout(timeout);
+
+          reject(error);
+
+        },
+
+        async () => {
+
+          clearTimeout(timeout);
+
+          const url =
+            await getDownloadURL(
+              uploadTask.snapshot.ref
+            );
+
+          resolve(url);
+
+        }
+
+      );
+
+    }
+  );
       }
 
       /* UPDATE STORE */
@@ -254,20 +295,20 @@ export default function SettingsPage() {
         }
       );
 
-      alert(
-        "Les paramètres ont été mis à jour avec succès."
-      );
+      showToast(
+  "Paramètres mis à jour avec succès.",
+  "success"
+);
 
     } catch (error) {
 
       console.log(error);
 
-      alert(
-        "Une erreur est survenue. Veuillez réessayer."
-      );
+      showToast("Une erreur est survenue. Veuillez réessayer.");
 
     } finally {
       setLoading(false);
+      setUploadProgress(0);
     }
   }
 
@@ -305,14 +346,30 @@ export default function SettingsPage() {
 
             <div className="logo-preview">
 
-              {logo ? (
-                <img
-                  src={logo}
-                  alt="Logo boutique"
-                />
-              ) : (
-                name?.[0] || "B"
-              )}
+              {processingImage ? (
+
+  <div className="logo-processing">
+
+    <div className="logo-spinner"></div>
+
+    <span>
+      Compression...
+    </span>
+
+  </div>
+
+) : logo ? (
+
+  <img
+    src={logo}
+    alt="Logo boutique"
+  />
+
+) : (
+
+  name?.[0] || "B"
+
+)}
 
             </div>
 
@@ -373,7 +430,7 @@ export default function SettingsPage() {
 
             <input
               type="tel"
-              placeholder="XXXXXXXX"
+              placeholder="21 234 567"
               value={phone}
               onChange={(e) => {
 
@@ -449,6 +506,48 @@ export default function SettingsPage() {
 
         </div>
 
+        {/* TOAST */}
+                {toast && (
+        
+                  <div
+                    className={`checkout-toast ${toast.type}`}
+                  >
+        
+                    <div className="toast-left">
+        
+                      <div
+  className={`toast-icon ${toast.type}`}
+>
+
+  {toast.type === "success" ? (
+    <FiCheckCircle />
+  ) : (
+    <FiAlertCircle />
+  )}
+
+</div>
+        
+                      <p>
+                        {toast.message}
+                      </p>
+        
+                    </div>
+        
+                    <button
+                      className="toast-close"
+                      onClick={() =>
+                        setToast(null)
+                      }
+                    >
+        
+                      <FiX />
+        
+                    </button>
+        
+                  </div>
+        
+                )}
+
         {/* ACTION */}
         <div className="settings-actions">
 
@@ -464,7 +563,10 @@ export default function SettingsPage() {
                   size={16}
                   color="#fff"
                 />
-                Enregistrement...
+                <>
+                  Enregistrement...
+                  {uploadProgress > 0 && ` ${uploadProgress}%`}
+                </>
               </>
             ) : (
               <>

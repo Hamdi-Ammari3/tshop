@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {ref,uploadBytes,getDownloadURL} from "firebase/storage";
 import {collection,addDoc,serverTimestamp} from "firebase/firestore";
-import {DB,storage} from "../../../../lib/firebaseConfig";
+import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
+import imageCompression from "browser-image-compression";
+import { DB,storage } from "../../../../lib/firebaseConfig";
 import {useStore} from "../../../../context/StoreContext";
 import Link from "next/link";
 import {FiArrowLeft,FiUpload,FiX,FiStar,FiAlertCircle} from "react-icons/fi";
@@ -23,6 +24,8 @@ export default function NewProductPage() {
   const [discountedPrice,setDiscountedPrice] = useState("");
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUploadIndex,setCurrentUploadIndex] = useState(0);
   const [toast, setToast] = useState(null);
 
   const categories = [
@@ -110,70 +113,120 @@ export default function NewProductPage() {
 
   /* CLEANUP */
   useEffect(() => {
-    return () => {
-      images.forEach((img) => {
-        if (img.preview?.startsWith("blob:")) {
-          URL.revokeObjectURL(img.preview);
-        }
-      });
-    };
-  }, [images]);
 
-  const handleFiles = (files) => {
+  return () => {
+
+    images.forEach((img) => {
+
+      if (
+        img.preview?.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(
+          img.preview
+        );
+      }
+
+    });
+
+  };
+
+}, []);
+
+  const handleFiles = async (files) => {
 
   if (!files) return;
 
-  const validFiles =
-    Array.from(files).filter(
-      (file) => {
+  const selectedFiles =
+    Array.from(files);
 
-        if (
-          !file.type.startsWith(
-            "image/"
-          )
-        ) {
+  if (
+    images.length +
+    selectedFiles.length >
+    10
+  ) {
 
-          showToast(
-            "Veuillez sélectionner uniquement des images."
-          );
-
-          return false;
-        }
-
-        if (file.size > 5 * 1024 * 1024) {
-          showToast("Chaque image doit être inférieure à 5 MB.");
-          return false;
-        }
-
-        return true;
-      }
+    showToast(
+      "Maximum 10 images."
     );
 
-  const mapped =
-    validFiles.map((file) => ({
+    return;
+  }
 
-      file,
+  try {
 
-      preview:
-        URL.createObjectURL(
-          file
-        ),
+    const processedImages = [];
 
-      id:
-        crypto.randomUUID(),
+    for (const file of selectedFiles) {
 
-    }));
+      if (
+        !file.type.startsWith(
+          "image/"
+        )
+      ) {
 
-  setImages((prev) => {
+        showToast(
+          "Veuillez sélectionner uniquement des images."
+        );
 
-    const merged = [
+        continue;
+      }
+
+      /*
+      MOBILE SAFE: allow larger originals because we compress later
+      */
+      if (
+        file.size >
+        15 * 1024 * 1024
+      ) {
+
+        showToast(
+          "Image trop volumineuse."
+        );
+
+        continue;
+      }
+
+      /*
+      COMPRESS + WEBP
+      */
+      const compressedFile =
+        await imageCompression(
+          file,
+          {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1600,
+            useWebWorker: true,
+            fileType: "image/webp",
+            initialQuality: 0.8,
+          }
+        );
+
+      processedImages.push({
+        id: crypto.randomUUID(),
+        file: compressedFile,
+        preview:
+          URL.createObjectURL(
+            compressedFile
+          ),
+      });
+
+    }
+
+    setImages((prev) => [
       ...prev,
-      ...mapped,
-    ];
+      ...processedImages,
+    ]);
 
-    return merged.slice(0, 10);
+  } catch (error) {
 
-  });
+    console.log(error);
+
+    showToast(
+      "Erreur lors du traitement des images."
+    );
+
+  }
+
 };
 
   /* REMOVE IMAGE */
@@ -266,34 +319,116 @@ export default function NewProductPage() {
 
       setLoading(true);
 
-      const uploadedImages = await Promise.all(
-        images.map(async (image) => {
+      const uploadedImages = [];
 
-        //const fileExtension = image.file.name.split(".").pop();
-        const fileExtension = image.file.type.split("/")[1] || "jpg";
+for (
+  let i = 0;
+  i < images.length;
+  i++
+) {
 
-        const fileName =
-          `${Date.now()}-${Math.random()
-            .toString(36)
-            .substring(2)}.${fileExtension}`;
+  const image = images[i];
 
-        const storageRef =
-          ref(
-            storage,
-            `products/${store.id}/${fileName}`
-          );
+  setCurrentUploadIndex(i + 1);
 
-        await uploadBytes(
-          storageRef,
-          image.file
-        );
+  const fileName =
+    `${Date.now()}-${crypto.randomUUID()}.webp`;
 
-        return await getDownloadURL(
-          storageRef
-        );
-      }
-    )
+  const storageRef = ref(
+    storage,
+    `products/${store.id}/${fileName}`
   );
+
+  const uploadTask =
+    uploadBytesResumable(
+      storageRef,
+      image.file,
+      {
+        contentType:
+          "image/webp",
+      }
+    );
+
+  const downloadURL =
+    await new Promise(
+      (resolve, reject) => {
+
+        const timeout =
+          setTimeout(() => {
+
+            reject(
+              new Error(
+                "Timeout upload"
+              )
+            );
+
+          }, 45000);
+
+        uploadTask.on(
+          "state_changed",
+
+          (snapshot) => {
+
+            const progress =
+              (
+                snapshot.bytesTransferred /
+                snapshot.totalBytes
+              ) * 100;
+
+            /*
+            GLOBAL PROGRESS
+            */
+            const totalProgress =
+              (
+                (
+                  i +
+                  progress / 100
+                ) /
+                images.length
+              ) * 100;
+
+            setUploadProgress(
+              Math.round(
+                totalProgress
+              )
+            );
+
+          },
+
+          (error) => {
+
+            clearTimeout(
+              timeout
+            );
+
+            reject(error);
+
+          },
+
+          async () => {
+
+            clearTimeout(
+              timeout
+            );
+
+            const url =
+              await getDownloadURL(
+                uploadTask.snapshot.ref
+              );
+
+            resolve(url);
+
+          }
+        );
+
+      }
+    );
+
+  uploadedImages.push(
+    downloadURL
+  );
+
+}
 
       await addDoc(collection(DB, "products"),{
           storeId: store.id,
@@ -336,8 +471,9 @@ export default function NewProductPage() {
       showToast(error?.message ||"Une erreur est survenue.");
     } finally {
       setLoading(false);
+      setUploadProgress(0);
+      setCurrentUploadIndex(0);
     }
-
   };
 
   return (
@@ -743,6 +879,47 @@ export default function NewProductPage() {
           </div>
 
         )}
+
+        {loading && (
+
+  <div className="upload-progress-box">
+
+    <div className="upload-progress-top">
+
+      <span>
+        Upload des images...
+      </span>
+
+      <span>
+        {uploadProgress}%
+      </span>
+
+    </div>
+
+    <div className="upload-progress-bar">
+
+      <div
+        className="upload-progress-fill"
+        style={{
+          width: `${uploadProgress}%`,
+        }}
+      />
+
+    </div>
+
+    <p>
+
+      Image
+      {" "}
+      {currentUploadIndex}
+      {" / "}
+      {images.length}
+
+    </p>
+
+  </div>
+
+)}
 
         {/* ACTIONS */}
         <div className="form-actions">

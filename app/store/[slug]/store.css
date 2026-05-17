@@ -565,6 +565,81 @@
   transform: scale(1.08);
 }
 
+/* IMAGE ARROWS */
+.product-image-arrow {
+  position: absolute;
+
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 38px;
+  height: 38px;
+
+  border: none;
+  border-radius: 999px;
+
+  background:
+    rgba(255,255,255,0.88);
+
+  backdrop-filter: blur(8px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  z-index: 3;
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    opacity 0.2s ease;
+
+  opacity: 0;
+}
+
+.store-product-card:hover
+.product-image-arrow {
+  opacity: 1;
+}
+
+.product-image-arrow:hover {
+  transform:
+    translateY(-50%)
+    scale(1.08);
+
+  background: white;
+}
+
+.product-image-arrow svg {
+  font-size: 18px;
+  color: #111827;
+}
+
+.product-image-arrow.left {
+  left: 12px;
+}
+
+.product-image-arrow.right {
+  right: 12px;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+
+  .product-image-arrow {
+    opacity: 1;
+
+    width: 34px;
+    height: 34px;
+  }
+
+  .product-image-arrow svg {
+    font-size: 16px;
+  }
+}
+
 /* BADGE */
 .discount-badge {
   position: absolute;

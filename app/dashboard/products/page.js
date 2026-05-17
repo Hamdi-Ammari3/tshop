@@ -250,8 +250,8 @@ export default function ProductsPage() {
                     || "/placeholder.png"
                   }
                   alt={product.name}
-                  width={70}
-                  height={70}
+                  width={100}
+                  height={100}
                   unoptimized
                 />
 
@@ -372,8 +372,8 @@ export default function ProductsPage() {
                             || "/placeholder.png"
                           }
                           alt={product.name}
-                          width={70}
-                          height={70}
+                          width={100}
+                          height={100}
                           unoptimized
                         />
 

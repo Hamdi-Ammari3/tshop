@@ -766,3 +766,60 @@
     height: 48px;
   }
 }
+
+/* UPLOAD PROGRESS */
+.upload-progress-box {
+  padding: 18px;
+
+  border-radius: 18px;
+
+  background: #f9fafb;
+
+  border: 1px solid #e5e7eb;
+}
+
+.upload-progress-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 10px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  color: #111827;
+}
+
+.upload-progress-bar {
+  height: 10px;
+
+  border-radius: 999px;
+
+  overflow: hidden;
+
+  background: #e5e7eb;
+}
+
+.upload-progress-fill {
+  height: 100%;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #006de2,
+      #4f8cff
+    );
+
+  transition: width 0.25s ease;
+}
+
+.upload-progress-box p {
+  margin-top: 10px;
+
+  font-size: 13px;
+
+  color: #6b7280;
+}

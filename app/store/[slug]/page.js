@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -7,6 +8,8 @@ import {
   FiArrowUpRight,
   FiShoppingBag,
   FiStar,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 
 import { FaWhatsapp } from "react-icons/fa";
@@ -18,22 +21,54 @@ import "./store.css";
 
 export default function StorePage() {
 
-  const {
-    store,
-    filteredProducts,
-    sortBy,
-    setSortBy,
-  } = usePublicStore();
+  const {store,filteredProducts,sortBy,setSortBy} = usePublicStore();
 
   const params = useParams();
-
   const slug = params.slug;
+
+  const [imageIndexes, setImageIndexes] = useState({});
+
+  const isLocalhost = typeof window !== "undefined" && window.location.hostname === "localhost";
+
+  const nextImage = (
+  e,
+  productId,
+  imagesLength
+) => {
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  setImageIndexes((prev) => ({
+    ...prev,
+    [productId]:
+      ((prev[productId] || 0) + 1) %
+      imagesLength,
+  }));
+};
+
+const prevImage = (
+  e,
+  productId,
+  imagesLength
+) => {
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  setImageIndexes((prev) => ({
+    ...prev,
+    [productId]:
+      ((prev[productId] || 0) - 1 + imagesLength) %
+      imagesLength,
+  }));
+};
 
   return (
     <div className="store-page">
 
       {/* HERO */}
-<section className="store-hero">
+      <section className="store-hero">
 
   <div className="store-hero-content">
 
@@ -150,82 +185,114 @@ export default function StorePage() {
         )}
 
         {/* GRID */}
-        <div className="store-products-grid">
+        {/* GRID */}
+<div className="store-products-grid">
 
-          {filteredProducts.map(
-            (product) => (
+  {filteredProducts.map((product) => {
 
-              <Link
-                key={product.id}
-                href={`/store/${slug}/product/${product.id}`}
-                className="store-product-card"
+    const productUrl = isLocalhost ? `/store/${slug}/product/${product.id}` : `/product/${product.id}`;
+
+    return (
+
+      <Link
+        key={product.id}
+        href={productUrl}
+        className="store-product-card"
+      >
+
+        {/* IMAGE */}
+        <div className="store-product-image">
+
+          <img
+            src={
+              product.images?.[
+                imageIndexes[product.id] || 0
+              ] || "/placeholder.png"
+            }
+            alt={product.name}
+            loading="lazy"
+          />
+
+          {product.images?.length > 1 && (
+
+            <>
+              <button
+                className="product-image-arrow left"
+                onClick={(e) =>
+                  prevImage(
+                    e,
+                    product.id,
+                    product.images.length
+                  )
+                }
               >
+                <FiChevronLeft />
+              </button>
 
-                {/* IMAGE */}
-                <div className="store-product-image">
+              <button
+                className="product-image-arrow right"
+                onClick={(e) =>
+                  nextImage(
+                    e,
+                    product.id,
+                    product.images.length
+                  )
+                }
+              >
+                <FiChevronRight />
+              </button>
+            </>
 
-                  <img
-                    src={
-                      product
-                        .images?.[0] ||
-                      "/placeholder.png"
-                    }
-                    alt={
-                      product.name
-                    }
-                    loading="lazy"
-                  />
+          )}
 
-                  {product.hasDiscount && (
-                    <span className="discount-badge">
-                      Promo
-                    </span>
-                  )}
-
-                </div>
-
-                {/* INFO */}
-                <div className="store-product-info">
-
-                  <div className="store-product-top">
-
-                    <h3>
-                      {product.name}
-                    </h3>
-
-                    <FiArrowUpRight />
-
-                  </div>
-
-                  <p>
-                    {product.category ||
-                      "Produit"}
-                  </p>
-
-                  <div className="store-product-price">
-
-                    <span>
-                      {product.price} TND
-                    </span>
-
-                    {product.hasDiscount && (
-                      <small>
-                        {
-                          product.oldPrice
-                        }{" "}
-                        TND
-                      </small>
-                    )}
-
-                  </div>
-
-                </div>
-
-              </Link>
-            )
+          {product.hasDiscount && (
+            <span className="discount-badge">
+              Promo
+            </span>
           )}
 
         </div>
+
+        {/* INFO */}
+        <div className="store-product-info">
+
+          <div className="store-product-top">
+
+            <h3>
+              {product.name}
+            </h3>
+
+            <FiArrowUpRight />
+
+          </div>
+
+          <p>
+            {product.category ||
+              "Produit"}
+          </p>
+
+          <div className="store-product-price">
+
+            <span>
+              {product.price} TND
+            </span>
+
+            {product.hasDiscount && (
+              <small>
+                {product.oldPrice} TND
+              </small>
+            )}
+
+          </div>
+
+        </div>
+
+      </Link>
+
+    );
+  })}
+
+</div>
 
       </section>
 

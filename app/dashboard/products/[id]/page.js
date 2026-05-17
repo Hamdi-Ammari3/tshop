@@ -5,7 +5,8 @@ import Link from "next/link";
 import Image from "next/image";
 import {useParams,useRouter} from "next/navigation";
 import {doc,getDoc,updateDoc,serverTimestamp} from "firebase/firestore";
-import {ref,uploadBytes,getDownloadURL} from "firebase/storage";
+import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
+import imageCompression from "browser-image-compression";
 import {DB,storage} from "../../../../lib/firebaseConfig";
 import {FiArrowLeft,FiUpload,FiX,FiStar,FiSave,FiAlertCircle} from "react-icons/fi";
 import "./editProduct.css";
@@ -29,6 +30,8 @@ export default function EditProductPage() {
   const [images, setImages] = useState([]);
   const [toast, setToast] = useState(null);
   const [storeId, setStoreId] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUploadIndex,setCurrentUploadIndex] = useState(0);
 
   const categories = [
   {
@@ -193,62 +196,107 @@ export default function EditProductPage() {
 }, [images]);
 
   /* HANDLE FILES */
-  const handleFiles = (files) => {
+  const handleFiles = async (files) => {
 
-    if (!files) return;
+  if (!files) return;
 
-    const validFiles =
-      Array.from(files).filter(
-        (file) => {
+  const selectedFiles =
+    Array.from(files);
 
-          if (
-            !file.type.startsWith(
-              "image/"
-            )
-          ) {
+  if (
+    images.length +
+    selectedFiles.length >
+    10
+  ) {
 
-            showToast(
-              "Veuillez sélectionner uniquement des images."
-            );
+    showToast(
+      "Maximum 10 images."
+    );
 
-            return false;
+    return;
 
+  }
+
+  try {
+
+    const processedImages = [];
+
+    for (const file of selectedFiles) {
+
+      if (
+        !file.type.startsWith(
+          "image/"
+        )
+      ) {
+
+        showToast(
+          "Veuillez sélectionner uniquement des images."
+        );
+
+        continue;
+
+      }
+
+      /*
+      ALLOW LARGE ORIGINALS
+      because we compress later
+      */
+      if (
+        file.size >
+        15 * 1024 * 1024
+      ) {
+
+        showToast(
+          "Image trop volumineuse."
+        );
+
+        continue;
+
+      }
+
+      /*
+      COMPRESS + WEBP
+      */
+      const compressedFile =
+        await imageCompression(
+          file,
+          {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1600,
+            useWebWorker: true,
+            fileType: "image/webp",
+            initialQuality: 0.8,
           }
+        );
 
-          if (file.size > 5 * 1024 * 1024) {
-
-            showToast(
-              "Chaque image doit être inférieure à 5 MB."
-            );
-
-            return false;
-
-          }
-
-          return true;
-
-        }
-      );
-
-      const mapped = validFiles.map((file) => ({
+      processedImages.push({
         id: crypto.randomUUID(),
-        file,
-        preview: URL.createObjectURL(file),
+        file: compressedFile,
+        preview:
+          URL.createObjectURL(
+            compressedFile
+          ),
         existing: false,
-      }));
+      });
 
-    setImages((prev) => {
+    }
 
-      const merged = [
-        ...prev,
-        ...mapped,
-      ];
+    setImages((prev) => [
+      ...prev,
+      ...processedImages,
+    ]);
 
-      return merged.slice(0, 10);
+  } catch (error) {
 
-    });
+    console.log(error);
 
-  };
+    showToast(
+      "Erreur lors du traitement des images."
+    );
+
+  }
+
+};
 
   /* REMOVE IMAGE */
   const removeImage = (index) => {
@@ -355,31 +403,124 @@ export default function EditProductPage() {
 
       const uploadedImages = [];
 
-      for (const image of images) {
+      for (
+  let i = 0;
+  i < images.length;
+  i++
+) {
 
-        /* EXISTING */
-        if (image.existing) {
-          uploadedImages.push(image.preview);
-          continue;
+  const image = images[i];
 
-        }
+  /*
+  EXISTING IMAGE
+  */
+  if (image.existing) {
 
-        /* NEW */
-        //const fileExtension = image.file.name.split(".").pop();
-        const fileExtension = image.file.type.split("/")[1] || "jpg";
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
-        const storageRef = ref(storage,`products/${storeId}/${fileName}`);
+    uploadedImages.push(
+      image.preview
+    );
 
-        await uploadBytes(storageRef,image.file);
+    continue;
 
-        const url =
-          await getDownloadURL(
-            storageRef
-          );
+  }
 
-        uploadedImages.push(url);
+  setCurrentUploadIndex(i + 1);
+
+  const fileName =
+    `${Date.now()}-${crypto.randomUUID()}.webp`;
+
+  const storageRef = ref(
+    storage,
+    `products/${storeId}/${fileName}`
+  );
+
+  const uploadTask =
+    uploadBytesResumable(
+      storageRef,
+      image.file,
+      {
+        contentType:
+          "image/webp",
+      }
+    );
+
+  const downloadURL =
+    await new Promise(
+      (resolve, reject) => {
+
+        const timeout =
+          setTimeout(() => {
+
+            reject(
+              new Error(
+                "Timeout upload"
+              )
+            );
+
+          }, 45000);
+
+        uploadTask.on(
+          "state_changed",
+
+          (snapshot) => {
+
+            const progress =
+              (
+                snapshot.bytesTransferred /
+                snapshot.totalBytes
+              ) * 100;
+
+            const totalProgress =
+              (
+                (
+                  i +
+                  progress / 100
+                ) /
+                images.length
+              ) * 100;
+
+            setUploadProgress(
+              Math.round(
+                totalProgress
+              )
+            );
+
+          },
+
+          (error) => {
+
+            clearTimeout(
+              timeout
+            );
+
+            reject(error);
+
+          },
+
+          async () => {
+
+            clearTimeout(
+              timeout
+            );
+
+            const url =
+              await getDownloadURL(
+                uploadTask.snapshot.ref
+              );
+
+            resolve(url);
+
+          }
+        );
 
       }
+    );
+
+  uploadedImages.push(
+    downloadURL
+  );
+
+}
 
       /* UPDATE PRODUCT */
       await updateDoc(
@@ -408,9 +549,9 @@ export default function EditProductPage() {
       );
 
     } finally {
-
       setSaving(false);
-
+      setUploadProgress(0);
+      setCurrentUploadIndex(0);
     }
 
   };
@@ -816,6 +957,47 @@ export default function EditProductPage() {
           </div>
 
         )}
+
+        {saving && (
+
+  <div className="upload-progress-box">
+
+    <div className="upload-progress-top">
+
+      <span>
+        Upload des images...
+      </span>
+
+      <span>
+        {uploadProgress}%
+      </span>
+
+    </div>
+
+    <div className="upload-progress-bar">
+
+      <div
+        className="upload-progress-fill"
+        style={{
+          width: `${uploadProgress}%`,
+        }}
+      />
+
+    </div>
+
+    <p>
+
+      Image
+      {" "}
+      {currentUploadIndex}
+      {" / "}
+      {images.length}
+
+    </p>
+
+  </div>
+
+)}
 
         {/* ACTIONS */}
         <div className="form-actions">

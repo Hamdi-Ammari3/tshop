@@ -189,17 +189,9 @@ export default function DashboardHome() {
     },
   ];
 
-  const isLocalhost =
-    typeof window !== "undefined" &&
-    window.location.hostname === "localhost";
-
-  const storeUrl = isLocalhost
-    ? `/store/${store.slug}`
-    : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
-
-  const copyStoreUrl = isLocalhost
-    ? `${window.location.origin}/store/${store.slug}`
-    : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
+  const isLocalhost = typeof window !== "undefined" && window.location.hostname === "localhost";
+  const storeUrl = isLocalhost ? `/store/${store.slug}` : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
+  const copyStoreUrl = isLocalhost ? `${window.location.origin}/store/${store.slug}` : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
 
   /* COPY */
   const copyStoreLink = async () => {
