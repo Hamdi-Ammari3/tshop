@@ -220,7 +220,7 @@ export default function NewProductPage() {
 
     console.log(error);
     showToast(error);
-    alert("Error: " + error?.message + " | " + error?.name);
+    //alert("Error: " + error?.message + " | " + error?.name);
 
     //showToast("Erreur lors du traitement des images.",error);
 
