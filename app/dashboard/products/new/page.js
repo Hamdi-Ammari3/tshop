@@ -216,9 +216,10 @@ export default function NewProductPage() {
       ...processedImages,
     ]);
 
-  } catch (error) {
-    //console.log(error);
-    showToast(error?.message ||"Erreur lors du traitement des images.");
+  } catch (fileError) {
+    const msg = fileError?.message || fileError?.toString() || "unknown";
+    console.error("Failed on file:", file.name, msg, fileError);
+    showToast(`Erreur: ${msg}`); // real error visible on screen
   }
 };
 
