@@ -761,5 +761,136 @@
   .logo-error-overlay small {
     font-size: 11px;
   }
+}
 
+/* LOGO STATES */
+.upload-area {
+  position: relative;
+  overflow: hidden;
+}
+
+/* LOADING */
+.logo-loading {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(255,255,255,0.92);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 3;
+}
+
+.logo-loading-spinner {
+  width: 28px;
+  height: 28px;
+
+  border-radius: 50%;
+
+  border: 3px solid #d1d5db;
+  border-top-color: #006de2;
+
+  animation: spin 0.7s linear infinite;
+}
+
+/* FAILED */
+.logo-error-overlay {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(255,255,255,0.97);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  padding: 14px;
+
+  z-index: 5;
+}
+
+.logo-error-overlay svg {
+  font-size: 30px;
+
+  color: #ef4444;
+
+  margin-bottom: 8px;
+}
+
+.logo-error-overlay p {
+  margin: 0;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  color: #111827;
+}
+
+.logo-error-overlay small {
+  margin-top: 4px;
+
+  font-size: 11px;
+
+  color: #6b7280;
+
+  line-height: 1.4;
+}
+
+.logo-error-overlay button {
+  margin-top: 12px;
+
+  height: 36px;
+
+  padding: 0 14px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: #ef4444;
+
+  color: white;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+/* FAILED BORDER */
+.upload-area-failed {
+  border-color: #ef4444;
+}
+
+/* REMOVE BUTTON */
+.remove-logo-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+
+  width: 36px;
+  height: 36px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: rgba(0,0,0,0.65);
+
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  z-index: 6;
+}
+
+.remove-logo-btn:hover {
+  background: rgba(0,0,0,0.8);
 }

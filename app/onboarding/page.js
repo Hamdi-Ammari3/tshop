@@ -3,7 +3,6 @@
 import { useState,useRef,useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import imageCompression from "browser-image-compression";
 import { signInWithGoogle } from "../../lib/auth";
 import { DB } from "../../lib/firebaseConfig";
 import { uploadToCloudinary } from "../../lib/uploadToCloudinary";
@@ -24,9 +23,7 @@ export default function Onboarding() {
     const [phone, setPhone] = useState("");
     const [hasWhatsapp, setHasWhatsapp] = useState(true);
     const [logo, setLogo] = useState(null);
-    const [uploadProgress, setUploadProgress] =useState(0);
-    const [processingImage, setProcessingImage] =useState(false);
-
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [checkingSlug, setCheckingSlug] = useState(false);
     const [slugAvailable, setSlugAvailable] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -98,16 +95,17 @@ export default function Onboarding() {
 
     }, [slug]);
 
-    const handleImageChange = async (e) => {
+    /*
+    const handleImageChange = (e) => {
 
   const file =
     e.target.files?.[0];
 
-  if (!file) return;
+  if (!file) {
+    return;
+  }
 
   try {
-
-    setProcessingImage(true);
 
     if (
       !file.type.startsWith(
@@ -134,49 +132,21 @@ export default function Onboarding() {
       return;
     }
 
-    const compressedFile =
-      await imageCompression(
-        file,
-        {
-          maxSizeMB: 0.7,
-          maxWidthOrHeight: 1200,
-          useWebWorker:
-            typeof window !==
-              "undefined" &&
-            window.innerWidth >
-              768,
-          fileType:
-            "image/webp",
-          initialQuality: 0.75,
-          preserveExif: false,
-          alwaysKeepResolution: false,
-        }
+    if (
+      logo?.preview?.startsWith(
+        "blob:"
+      )
+    ) {
+
+      URL.revokeObjectURL(
+        logo.preview
       );
 
+    }
+
     const preview =
-      await new Promise(
-        (
-          resolve,
-          reject
-        ) => {
-
-          const reader =
-            new FileReader();
-
-          reader.onload =
-            () =>
-              resolve(
-                reader.result
-              );
-
-          reader.onerror =
-            reject;
-
-          reader.readAsDataURL(
-            compressedFile
-          );
-
-        }
+      URL.createObjectURL(
+        file
       );
 
     setLogo({
@@ -184,8 +154,7 @@ export default function Onboarding() {
       id:
         crypto.randomUUID(),
 
-      file:
-        compressedFile,
+      file,
 
       preview,
 
@@ -203,23 +172,107 @@ export default function Onboarding() {
     console.log(error);
 
     showToast(
-      "Erreur lors du traitement de l'image"
+      "Erreur lors du chargement de l'image"
     );
 
   } finally {
-
-    setProcessingImage(false);
 
     e.target.value = "";
 
   }
 
 };
+*/
+
+const handleImageChange = (e) => {
+
+  const file =
+    e.target.files?.[0];
+
+  if (!file) {
+    return;
+  }
+
+  if (
+    !file.type.startsWith(
+      "image/"
+    )
+  ) {
+
+    showToast(
+      "Veuillez sélectionner une image"
+    );
+
+    return;
+  }
+
+  /*
+  CLEAN OLD PREVIEW
+  */
+  if (
+    logo?.preview?.startsWith(
+      "blob:"
+    )
+  ) {
+
+    URL.revokeObjectURL(
+      logo.preview
+    );
+
+  }
+
+  const preview =
+    URL.createObjectURL(
+      file
+    );
+
+  setLogo({
+    file,
+    preview,
+  });
+
+  e.target.value = "";
+
+};
+
+useEffect(() => {
+
+  return () => {
+
+    if (
+      logo?.preview?.startsWith(
+        "blob:"
+      )
+    ) {
+
+      URL.revokeObjectURL(
+        logo.preview
+      );
+
+    }
+
+  };
+
+}, []);
 
   //Remove logo
-  const removeLogo = () => {
-    setLogo(null);
-  };
+const removeLogo = () => {
+
+  if (
+    logo?.preview?.startsWith(
+      "blob:"
+    )
+  ) {
+
+    URL.revokeObjectURL(
+      logo.preview
+    );
+
+  }
+
+  setLogo(null);
+
+};
 
 
     //Toast message
@@ -287,10 +340,29 @@ export default function Onboarding() {
             /* UPLOADS */
             let logoUrl = "";
 
-            if (
-  logo &&
-  logo.status !== "failed"
-) {
+            /*
+            if (logo) {
+              if (logo.status === "failed") {
+                showToast("Veuillez changer le logo.");
+                setSubmitting(false);
+                return;
+              }
+
+              setLogo((prev) => ({
+                ...prev,
+                status: "uploading",
+              }));
+
+              const url = await uploadToCloudinary(logo.file,(percent) => {
+                setUploadProgress(Math.round(percent));
+              });
+
+              logoUrl = url.replace("/upload/","/upload/f_webp,q_auto,w_1200/");
+
+            }
+            */
+
+            if (logo) {
 
   const url =
     await uploadToCloudinary(
@@ -386,6 +458,10 @@ export default function Onboarding() {
                 createdAt,
             });
 
+            setLogo((prev) => ({
+              ...prev,
+            }));
+
             setLoading(false);
 
             /* REDIRECT */
@@ -395,6 +471,17 @@ export default function Onboarding() {
         } catch (err) {
             console.error(err);
             showToast("Something went wrong");
+            setLogo((prev) => {
+
+  if (!prev) {
+    return null;
+  }
+
+  return {
+    ...prev,
+  };
+
+});
         } finally {
           setSubmitting(false);
           setUploadProgress(0)
@@ -506,177 +593,44 @@ export default function Onboarding() {
         </div>
 
         {/* LOGO */}
-        <div
-          className={`upload-area ${logo?.status === "failed"? "upload-area-failed": ""}`}
-          onClick={() => {
-            logoInputRef.current?.click();
-          }}
-        >
+        {/* LOGO */}
+<div
+  className="upload-area"
+  onClick={() => {
 
-      {processingImage ? (
+    if (submitting) {
+      return;
+    }
 
-    <div className="upload-processing">
+    logoInputRef.current?.click();
 
-      <div className="upload-spinner"></div>
+  }}
+>
 
-      <span>
-        Compression...
-      </span>
-
-    </div>
-
-  ) : logo ? (
+  {logo ? (
 
     <>
-
-      {logo.status === "loading" && (
-
-        <div className="logo-loading">
-
-          <div className="logo-loading-spinner"></div>
-
-        </div>
-
-      )}
 
       <img
         src={logo.preview}
         alt="logo"
-
-        onLoad={() => {
-
-          setLogo((prev) => {
-
-            if (!prev) {
-              return null;
-            }
-
-            return {
-              ...prev,
-              status: "ready",
-            };
-
-          });
-
-        }}
-
-        onError={(e) => {
-
-          if (
-            logo.retrying
-          ) {
-            return;
-          }
-
-          setLogo((prev) => {
-
-            if (!prev) {
-              return null;
-            }
-
-            return {
-              ...prev,
-              retrying: true,
-            };
-
-          });
-
-          setTimeout(() => {
-
-            e.target.src =
-              logo.preview +
-              "#" +
-              Date.now();
-
-            setTimeout(() => {
-
-              setLogo((prev) => {
-
-                if (!prev) {
-                  return null;
-                }
-
-                return {
-
-                  ...prev,
-
-                  retrying: false,
-
-                  status:
-                    prev.status ===
-                    "ready"
-                      ? "ready"
-                      : "failed",
-
-                  error:
-                    prev.status ===
-                    "ready"
-                      ? null
-                      : "Image incompatible",
-
-                };
-
-              });
-
-            }, 1200);
-
-          }, 500);
-
-        }}
       />
 
-      {logo.status === "failed" && (
+      <button
+        type="button"
+        className="remove-logo-btn"
+        onClick={(e) => {
 
-        <div className="logo-error-overlay">
+          e.stopPropagation();
 
-          <FiAlertCircle />
+          removeLogo();
 
-          <p>
-            Image incompatible
-          </p>
+        }}
+      >
 
-          <small>
-            Essayez une autre photo
-          </small>
+        <FiX />
 
-          <button
-            type="button"
-            onClick={(e) => {
-
-              e.stopPropagation();
-
-              removeLogo();
-
-            }}
-          >
-
-            Supprimer
-
-          </button>
-
-        </div>
-
-      )}
-
-      {logo.status !== "failed" && (
-
-        <button
-          type="button"
-          className="remove-logo-btn"
-          onClick={(e) => {
-
-            e.stopPropagation();
-
-            removeLogo();
-
-          }}
-        >
-
-          <FiX />
-
-        </button>
-
-      )}
+      </button>
 
     </>
 
@@ -694,15 +648,16 @@ export default function Onboarding() {
 
   )}
 
-        </div>   
+</div>
 
-        <input
+<input
   type="file"
   accept="image/*"
   hidden
   ref={logoInputRef}
   onChange={handleImageChange}
 />
+
 
         {/* PHONE */}
         <div className="form-group">
