@@ -111,6 +111,7 @@ export default function NewProductPage() {
     }, 3500);
   };
 
+  /*
 const handleFiles = (files) => {
 
   if (!files || files.length === 0) return;
@@ -203,6 +204,122 @@ const handleFiles = (files) => {
   });
 
 };
+*/
+
+const handleFiles = (files) => {
+
+  if (!files || files.length === 0) {
+    return;
+  }
+
+  const selectedFiles =
+    Array.from(files);
+
+  setImages((prev) => {
+
+    const currentCount =
+      prev.length;
+
+    if (currentCount >= 10) {
+
+      showToast(
+        "Maximum 10 images atteint."
+      );
+
+      return prev;
+    }
+
+    const remainingSlots =
+      10 - currentCount;
+
+    const allowedFiles =
+      selectedFiles.slice(
+        0,
+        remainingSlots
+      );
+
+    const validImages = [];
+
+    let failedCount = 0;
+
+    for (const file of allowedFiles) {
+
+      /* TYPE */
+      if (
+        !file.type.startsWith(
+          "image/"
+        )
+      ) {
+
+        failedCount++;
+        continue;
+      }
+
+      /* SIZE */
+      if (
+        file.size >
+        15 * 1024 * 1024
+      ) {
+
+        failedCount++;
+        continue;
+      }
+
+      /* DUPLICATES */
+      const alreadyExists =
+        prev.some(
+          (img) =>
+            img.file.name ===
+              file.name &&
+            img.file.size ===
+              file.size
+        );
+
+      if (alreadyExists) {
+        continue;
+      }
+
+      try {
+
+        const preview =
+          URL.createObjectURL(
+            file
+          );
+
+        validImages.push({
+          id:
+            crypto.randomUUID(),
+          file,
+          preview,
+
+          /* STATES */
+          status: "loading",
+
+          error: null,
+        });
+
+      } catch (error) {
+
+        console.log(error);
+
+        failedCount++;
+      }
+    }
+
+    if (failedCount > 0) {
+
+      showToast(
+        "Certaines images n'ont pas pu être chargées. Essayez une autre photo."
+      );
+
+    }
+
+    return [
+      ...prev,
+      ...validImages,
+    ];
+  });
+};
 
   useEffect(() => {
     imagesRef.current = images;
@@ -231,8 +348,6 @@ const handleFiles = (files) => {
   };
 
 }, []);
-
-
 
  const removeImage = (index) => {
   setImages((prev) => {
@@ -322,7 +437,7 @@ const handleFiles = (files) => {
       setLoading(true);
 
       const uploadedImages = [];
-
+/*
 for (let i = 0; i < images.length; i++) {
 
   const image = images[i];
@@ -346,6 +461,118 @@ for (let i = 0; i < images.length; i++) {
 
   uploadedImages.push(webpUrl);
 
+}
+*/
+
+const validUploadImages =
+  images.filter(
+    (img) =>
+      img.status !== "failed"
+  );
+
+if (
+  validUploadImages.length === 0
+) {
+
+  showToast(
+    "Aucune image valide."
+  );
+
+  setLoading(false);
+
+  return;
+}
+
+for (
+  let i = 0;
+  i < validUploadImages.length;
+  i++
+) {
+
+  const image =
+    validUploadImages[i];
+
+  setCurrentUploadIndex(
+    i + 1
+  );
+
+  try {
+
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === image.id
+          ? {
+              ...img,
+              status:
+                "uploading",
+            }
+          : img
+      )
+    );
+
+    const url =
+      await uploadToCloudinary(
+        image.file,
+        (percent) => {
+
+          const totalProgress =
+            (
+              (
+                i +
+                percent / 100
+              ) /
+              validUploadImages.length
+            ) * 100;
+
+          setUploadProgress(
+            Math.round(
+              totalProgress
+            )
+          );
+        }
+      );
+
+    const webpUrl =
+      url.replace(
+        "/upload/",
+        "/upload/f_webp,q_auto,w_1200/"
+      );
+
+    uploadedImages.push(
+      webpUrl
+    );
+
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === image.id
+          ? {
+              ...img,
+              status:
+                "uploaded",
+            }
+          : img
+      )
+    );
+
+  } catch (error) {
+
+    console.log(error);
+
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === image.id
+          ? {
+              ...img,
+              status:
+                "failed",
+
+              error:
+                "Échec upload",
+            }
+          : img
+      )
+    );
+  }
 }
 
       await addDoc(collection(DB, "products"),{
@@ -447,61 +674,139 @@ for (let i = 0; i < images.length; i++) {
 
             {images.map(
               (image, index) => (
-
                 <div
-                  key={image.id}
-                  className="image-preview"
-                >
+  key={image.id}
+  className={`image-preview ${
+    image.status === "failed"
+      ? "image-preview-failed"
+      : ""
+  }`}
+>
 
-                  <img
-                    src={image.preview}
-                    alt="Preview"
-                    loading="lazy"
-                    className="preview-image"
-                  />
+  {/* LOADING */}
+  {image.status === "loading" && (
 
-                  {index === 0 && (
+    <div className="image-loading">
 
-                    <span className="thumbnail-badge">
-                      Miniature
-                    </span>
+      <div className="image-loading-spinner"></div>
 
-                  )}
+    </div>
 
-                  <div className="image-overlay">
+  )}
 
-                    {index !== 0 ? (
+  {/* IMAGE */}
+  <img
+    src={image.preview}
+    alt="Preview"
+    loading="lazy"
+    className="preview-image"
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          makeThumbnail(index)
-                        }
-                      >
+    onLoad={() => {
 
-                        <FiStar />
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === image.id
+            ? {
+                ...img,
+                status: "ready",
+              }
+            : img
+        )
+      );
 
-                      </button>
+    }}
 
-                    ) : (
-                      <span></span>
-                    )}
+    onError={() => {
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeImage(index)
-                      }
-                      className="remove-btn"
-                    >
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === image.id
+            ? {
+                ...img,
+                status: "failed",
 
-                      <FiX />
+                error:
+                  "Image incompatible",
+              }
+            : img
+        )
+      );
 
-                    </button>
+    }}
+  />
 
-                  </div>
+  {/* FAILED */}
+  {image.status === "failed" && (
 
-                </div>
+    <div className="image-error-overlay">
+
+      <FiAlertCircle />
+
+      <p>
+        Image non compatible
+      </p>
+
+      <small>
+        Essayez une autre photo
+      </small>
+
+      <button
+        type="button"
+        onClick={() =>
+          removeImage(index)
+        }
+      >
+
+        Supprimer
+
+      </button>
+
+    </div>
+
+  )}
+
+  {/* THUMBNAIL */}
+  {index === 0 && (
+    <span className="thumbnail-badge">
+      Miniature
+    </span>
+  )}
+
+  {/* OVERLAY */}
+  <div className="image-overlay">
+
+    {index !== 0 ? (
+
+      <button
+        type="button"
+        onClick={() =>
+          makeThumbnail(index)
+        }
+      >
+
+        <FiStar />
+
+      </button>
+
+    ) : (
+      <span></span>
+    )}
+
+    <button
+      type="button"
+      onClick={() =>
+        removeImage(index)
+      }
+      className="remove-btn"
+    >
+
+      <FiX />
+
+    </button>
+
+  </div>
+
+</div>
               )
             )}
 
@@ -890,101 +1195,59 @@ for (let i = 0; i < images.length; i++) {
   );
 }
 
-  /*
-// HELPER: converts file to base64 data URL
-const readFileAsDataURL = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        resolve(e.target.result);
-      } else {
-        reject(new Error("Empty result"));
-      }
-    };
-    reader.onerror = () => reject(new Error("FileReader failed"));
-    reader.onabort = () => reject(new Error("FileReader aborted"));
-    reader.readAsDataURL(file);
-  });
-};
+/*
+                <div
+                  key={image.id}
+                  className="image-preview"
+                >
 
-const handleFiles = async (files) => {
+                  <img
+                    src={image.preview}
+                    alt="Preview"
+                    loading="lazy"
+                    className="preview-image"
+                  />
 
-  if (!files || files.length === 0) return;
+                  {index === 0 && (
 
-  const selectedFiles = Array.from(files);
+                    <span className="thumbnail-badge">
+                      Miniature
+                    </span>
 
-  // READ COUNT FROM REF — no state mutation, no re-render, no interruption
-  const currentCount = imagesRef.current.length;
+                  )}
 
-  if (currentCount >= 10) {
-    showToast("Maximum 10 images atteint.");
-    return;
-  }
+                  <div className="image-overlay">
 
-  // VALIDATE
-  const validFiles = [];
+                    {index !== 0 ? (
 
-  for (const file of selectedFiles) {
+                      <button
+                        type="button"
+                        onClick={() =>
+                          makeThumbnail(index)
+                        }
+                      >
 
-    if (!file.type.startsWith("image/")) {
-      showToast("Veuillez sélectionner uniquement des images.");
-      continue;
-    }
+                        <FiStar />
 
-    if (file.size > 15 * 1024 * 1024) {
-      showToast(`"${file.name}" est trop volumineuse (max 15MB).`);
-      continue;
-    }
+                      </button>
 
-    validFiles.push(file);
-  }
+                    ) : (
+                      <span></span>
+                    )}
 
-  if (validFiles.length === 0) return;
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeImage(index)
+                      }
+                      className="remove-btn"
+                    >
 
-  // LIMIT HOW MANY WE ACCEPT
-  const allowedFiles = validFiles.slice(0, 10 - currentCount);
+                      <FiX />
 
-  if (allowedFiles.length < validFiles.length) {
-    showToast(`Seulement ${allowedFiles.length} image(s) ajoutée(s) (maximum 10).`);
-  }
+                    </button>
 
-  // PROCESS ALL IN PARALLEL
-  const results = await Promise.allSettled(
-    allowedFiles.map(async (file) => {
-      const preview = await readFileAsDataURL(file);
-      return {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        file,
-        preview,
-      };
-    })
-  );
+                  </div>
 
-  const processedImages = results
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => r.value);
-
-  const failedCount = results.filter((r) => r.status === "rejected").length;
-
-  if (failedCount > 0) {
-    showToast(`${failedCount} image(s) n'ont pas pu être chargées.`);
-  }
-
-  if (processedImages.length === 0) return;
-
-  // SINGLE CLEAN STATE UPDATE
-  setImages((prev) => [...prev, ...processedImages]);
-
-};
-
-useEffect(() => {
-  return () => {
-    imagesRef.current.forEach((img) => {
-      if (img.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(img.preview);
-      }
-    });
-  };
-}, []);
+                </div>
 */
