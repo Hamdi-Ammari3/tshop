@@ -111,90 +111,96 @@ export default function NewProductPage() {
     }, 3500);
   };
 
-// HELPER: converts file to base64 data URL
-const readFileAsDataURL = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        resolve(e.target.result);
-      } else {
-        reject(new Error("Empty result"));
-      }
-    };
-    reader.onerror = () => reject(new Error("FileReader failed"));
-    reader.onabort = () => reject(new Error("FileReader aborted"));
-    reader.readAsDataURL(file);
-  });
-};
-
-const handleFiles = async (files) => {
+const handleFiles = (files) => {
 
   if (!files || files.length === 0) return;
 
   const selectedFiles = Array.from(files);
 
-  // READ COUNT FROM REF — no state mutation, no re-render, no interruption
-  const currentCount = imagesRef.current.length;
+  setImages((prev) => {
 
-  if (currentCount >= 10) {
-    showToast("Maximum 10 images atteint.");
-    return;
-  }
+    const currentCount = prev.length;
 
-  // VALIDATE
-  const validFiles = [];
+    if (currentCount >= 10) {
 
-  for (const file of selectedFiles) {
+      showToast(
+        "Maximum 10 images atteint."
+      );
 
-    if (!file.type.startsWith("image/")) {
-      showToast("Veuillez sélectionner uniquement des images.");
-      continue;
+      return prev;
     }
 
-    if (file.size > 15 * 1024 * 1024) {
-      showToast(`"${file.name}" est trop volumineuse (max 15MB).`);
-      continue;
+    const remainingSlots =
+      10 - currentCount;
+
+    const allowedFiles =
+      selectedFiles.slice(
+        0,
+        remainingSlots
+      );
+
+    const validImages = [];
+
+    let failedCount = 0;
+
+    for (const file of allowedFiles) {
+
+      // VALIDATE TYPE
+      if (
+        !file.type.startsWith(
+          "image/"
+        )
+      ) {
+
+        failedCount++;
+        continue;
+      }
+
+      // VALIDATE SIZE
+      if (
+        file.size >
+        15 * 1024 * 1024
+      ) {
+
+        failedCount++;
+        continue;
+      }
+
+      try {
+
+        const preview =
+          URL.createObjectURL(
+            file
+          );
+
+        validImages.push({
+          id:
+            crypto.randomUUID(),
+          file,
+          preview,
+        });
+
+      } catch (error) {
+
+        console.log(error);
+
+        failedCount++;
+      }
     }
 
-    validFiles.push(file);
-  }
+    if (failedCount > 0) {
 
-  if (validFiles.length === 0) return;
+      showToast(
+        `${failedCount} image(s) n'ont pas pu être chargées.`
+      );
 
-  // LIMIT HOW MANY WE ACCEPT
-  const allowedFiles = validFiles.slice(0, 10 - currentCount);
+    }
 
-  if (allowedFiles.length < validFiles.length) {
-    showToast(`Seulement ${allowedFiles.length} image(s) ajoutée(s) (maximum 10).`);
-  }
-
-  // PROCESS ALL IN PARALLEL
-  const results = await Promise.allSettled(
-    allowedFiles.map(async (file) => {
-      const preview = await readFileAsDataURL(file);
-      return {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        file,
-        preview,
-      };
-    })
-  );
-
-  const processedImages = results
-    .filter((r) => r.status === "fulfilled")
-    .map((r) => r.value);
-
-  const failedCount = results.filter((r) => r.status === "rejected").length;
-
-  if (failedCount > 0) {
-    showToast(`${failedCount} image(s) n'ont pas pu être chargées.`);
-  }
-
-  if (processedImages.length === 0) return;
-
-  // SINGLE CLEAN STATE UPDATE
-  setImages((prev) => [...prev, ...processedImages]);
+    return [
+      ...prev,
+      ...validImages,
+    ];
+  });
 
 };
 
@@ -202,15 +208,31 @@ const handleFiles = async (files) => {
     imagesRef.current = images;
   }, [images]);
 
-useEffect(() => {
+  useEffect(() => {
+
   return () => {
+
     imagesRef.current.forEach((img) => {
-      if (img.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(img.preview);
+
+      if (
+        img.preview?.startsWith(
+          "blob:"
+        )
+      ) {
+
+        URL.revokeObjectURL(
+          img.preview
+        );
+
       }
+
     });
+
   };
+
 }, []);
+
+
 
  const removeImage = (index) => {
   setImages((prev) => {
@@ -500,7 +522,7 @@ for (let i = 0; i < images.length; i++) {
 
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/jpg"
+                  accept="image/*"
                   multiple
                   hidden
                   onChange={(e) => {
@@ -868,114 +890,40 @@ for (let i = 0; i < images.length; i++) {
   );
 }
 
-/*
-  useEffect(() => {
-
-  return () => {
-
-    images.forEach((img) => {
-
-      if (
-        img.preview?.startsWith("blob:")
-      ) {
-        URL.revokeObjectURL(
-          img.preview
-        );
-      }
-
-    });
-
-  };
-
-}, []);
-*/
-
-/*
-  const handleFiles = async (files) => {
-
-  if (!files) return;
-
-  const selectedFiles = Array.from(files);
-
-  if (images.length + selectedFiles.length > 10) {
-    showToast("Maximum 10 images.");
-    return;
-  }
-
-  const processedImages = [];
-
-  for (const file of selectedFiles) {
-
-    if (!file.type.startsWith("image/")) {
-      showToast("Veuillez sélectionner uniquement des images.");
-      continue;
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      showToast("Image trop volumineuse (max 15MB).");
-      continue;
-    }
-
-    // MOBILE SAFE PREVIEW
-    try {
-      const preview = URL.createObjectURL(file);
-
-      processedImages.push({
-        id: `${Date.now()}-${Math.random()}`,
-        file,
-        preview,
-      });
-
-    } catch (err) {
-      console.error("Preview error:", err);
-      showToast("Erreur lors de la prévisualisation.");
-    }
-
-  }
-
-  setImages((prev) => [...prev, ...processedImages]);
-
-};
-*/
-
-  /*
-  const removeImage = (index) => {
-
-    setImages((prev) => {
-      const imageToRemove = prev[index];
-
-      if (imageToRemove?.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(imageToRemove.preview);
-      }
-
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-  */
-
   /*
 // HELPER: converts file to base64 data URL
 const readFileAsDataURL = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = (e) => resolve(e.target.result);
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        resolve(e.target.result);
+      } else {
+        reject(new Error("Empty result"));
+      }
+    };
     reader.onerror = () => reject(new Error("FileReader failed"));
+    reader.onabort = () => reject(new Error("FileReader aborted"));
     reader.readAsDataURL(file);
   });
 };
 
 const handleFiles = async (files) => {
 
-  if (!files) return;
+  if (!files || files.length === 0) return;
 
   const selectedFiles = Array.from(files);
 
-  if (images.length + selectedFiles.length > 10) {
-    showToast("Maximum 10 images.");
+  // READ COUNT FROM REF — no state mutation, no re-render, no interruption
+  const currentCount = imagesRef.current.length;
+
+  if (currentCount >= 10) {
+    showToast("Maximum 10 images atteint.");
     return;
   }
 
-  const processedImages = [];
+  // VALIDATE
+  const validFiles = [];
 
   for (const file of selectedFiles) {
 
@@ -985,29 +933,58 @@ const handleFiles = async (files) => {
     }
 
     if (file.size > 15 * 1024 * 1024) {
-      showToast("Image trop volumineuse (max 15MB).");
+      showToast(`"${file.name}" est trop volumineuse (max 15MB).`);
       continue;
     }
 
-    try {
-      // USE FileReader INSTEAD OF createObjectURL
-      // Works reliably on all mobile browsers
-      const preview = await readFileAsDataURL(file);
-
-      processedImages.push({
-        id: `${Date.now()}-${Math.random()}`,
-        file,
-        preview, // base64 data URL
-      });
-
-    } catch (err) {
-      console.error("Preview error:", err);
-      showToast("Erreur lors de la prévisualisation.");
-    }
-
+    validFiles.push(file);
   }
 
+  if (validFiles.length === 0) return;
+
+  // LIMIT HOW MANY WE ACCEPT
+  const allowedFiles = validFiles.slice(0, 10 - currentCount);
+
+  if (allowedFiles.length < validFiles.length) {
+    showToast(`Seulement ${allowedFiles.length} image(s) ajoutée(s) (maximum 10).`);
+  }
+
+  // PROCESS ALL IN PARALLEL
+  const results = await Promise.allSettled(
+    allowedFiles.map(async (file) => {
+      const preview = await readFileAsDataURL(file);
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        preview,
+      };
+    })
+  );
+
+  const processedImages = results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  const failedCount = results.filter((r) => r.status === "rejected").length;
+
+  if (failedCount > 0) {
+    showToast(`${failedCount} image(s) n'ont pas pu être chargées.`);
+  }
+
+  if (processedImages.length === 0) return;
+
+  // SINGLE CLEAN STATE UPDATE
   setImages((prev) => [...prev, ...processedImages]);
 
 };
+
+useEffect(() => {
+  return () => {
+    imagesRef.current.forEach((img) => {
+      if (img.preview?.startsWith("blob:")) {
+        URL.revokeObjectURL(img.preview);
+      }
+    });
+  };
+}, []);
 */
