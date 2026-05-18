@@ -110,28 +110,8 @@ export default function NewProductPage() {
     }, 3500);
   };
 
-  /*
-  useEffect(() => {
-
-  return () => {
-
-    images.forEach((img) => {
-
-      if (
-        img.preview?.startsWith("blob:")
-      ) {
-        URL.revokeObjectURL(
-          img.preview
-        );
-      }
-
-    });
-
-  };
-
-}, []);
-*/
-
+  
+/*
 // HELPER: converts file to base64 data URL
 const readFileAsDataURL = (file) => {
   return new Promise((resolve, reject) => {
@@ -188,6 +168,96 @@ const handleFiles = async (files) => {
   setImages((prev) => [...prev, ...processedImages]);
 
 };
+*/
+
+// HELPER: converts file to base64 data URL
+const readFileAsDataURL = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        resolve(e.target.result);
+      } else {
+        reject(new Error("Empty result"));
+      }
+    };
+    reader.onerror = () => reject(new Error("FileReader failed"));
+    reader.onabort = () => reject(new Error("FileReader aborted"));
+    reader.readAsDataURL(file);
+  });
+};
+
+const handleFiles = async (files) => {
+
+  if (!files || files.length === 0) return;
+
+  const selectedFiles = Array.from(files);
+
+  // CHECK LIMIT USING FUNCTIONAL STATE TO AVOID STALE CLOSURE
+  const currentCount = await new Promise((resolve) => {
+    setImages((prev) => {
+      resolve(prev.length);
+      return prev; // don't change state here
+    });
+  });
+
+  if (currentCount + selectedFiles.length > 10) {
+    showToast("Maximum 10 images.");
+    return;
+  }
+
+  // VALIDATE FILES FIRST BEFORE ANY ASYNC WORK
+  const validFiles = [];
+
+  for (const file of selectedFiles) {
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Veuillez sélectionner uniquement des images.");
+      continue;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast(`"${file.name}" est trop volumineuse (max 15MB).`);
+      continue;
+    }
+
+    validFiles.push(file);
+  }
+
+  if (validFiles.length === 0) return;
+
+  // PROCESS ALL FILES IN PARALLEL — faster and no race condition
+  const results = await Promise.allSettled(
+    validFiles.map(async (file) => {
+      const preview = await readFileAsDataURL(file);
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        preview,
+      };
+    })
+  );
+
+  // COLLECT ONLY SUCCEEDED
+  const processedImages = results
+    .filter((r) => r.status === "fulfilled")
+    .map((r) => r.value);
+
+  const failedCount = results.filter((r) => r.status === "rejected").length;
+
+  if (failedCount > 0) {
+    showToast(`${failedCount} image(s) n'ont pas pu être chargées.`);
+  }
+
+  if (processedImages.length === 0) return;
+
+  // SINGLE STATE UPDATE — no race condition possible
+  setImages((prev) => {
+    const remaining = 10 - prev.length;
+    return [...prev, ...processedImages.slice(0, remaining)];
+  });
+
+};
 
 useEffect(() => {
   return () => {
@@ -199,69 +269,6 @@ useEffect(() => {
     });
   };
 }, []);
-
-/*
-  const handleFiles = async (files) => {
-
-  if (!files) return;
-
-  const selectedFiles = Array.from(files);
-
-  if (images.length + selectedFiles.length > 10) {
-    showToast("Maximum 10 images.");
-    return;
-  }
-
-  const processedImages = [];
-
-  for (const file of selectedFiles) {
-
-    if (!file.type.startsWith("image/")) {
-      showToast("Veuillez sélectionner uniquement des images.");
-      continue;
-    }
-
-    if (file.size > 15 * 1024 * 1024) {
-      showToast("Image trop volumineuse (max 15MB).");
-      continue;
-    }
-
-    // MOBILE SAFE PREVIEW
-    try {
-      const preview = URL.createObjectURL(file);
-
-      processedImages.push({
-        id: `${Date.now()}-${Math.random()}`,
-        file,
-        preview,
-      });
-
-    } catch (err) {
-      console.error("Preview error:", err);
-      showToast("Erreur lors de la prévisualisation.");
-    }
-
-  }
-
-  setImages((prev) => [...prev, ...processedImages]);
-
-};
-*/
-
-  /*
-  const removeImage = (index) => {
-
-    setImages((prev) => {
-      const imageToRemove = prev[index];
-
-      if (imageToRemove?.preview?.startsWith("blob:")) {
-        URL.revokeObjectURL(imageToRemove.preview);
-      }
-
-      return prev.filter((_, i) => i !== index);
-    });
-  };
-  */
 
  const removeImage = (index) => {
   setImages((prev) => {
@@ -918,3 +925,88 @@ for (let i = 0; i < images.length; i++) {
     </div>
   );
 }
+
+/*
+  useEffect(() => {
+
+  return () => {
+
+    images.forEach((img) => {
+
+      if (
+        img.preview?.startsWith("blob:")
+      ) {
+        URL.revokeObjectURL(
+          img.preview
+        );
+      }
+
+    });
+
+  };
+
+}, []);
+*/
+
+/*
+  const handleFiles = async (files) => {
+
+  if (!files) return;
+
+  const selectedFiles = Array.from(files);
+
+  if (images.length + selectedFiles.length > 10) {
+    showToast("Maximum 10 images.");
+    return;
+  }
+
+  const processedImages = [];
+
+  for (const file of selectedFiles) {
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Veuillez sélectionner uniquement des images.");
+      continue;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast("Image trop volumineuse (max 15MB).");
+      continue;
+    }
+
+    // MOBILE SAFE PREVIEW
+    try {
+      const preview = URL.createObjectURL(file);
+
+      processedImages.push({
+        id: `${Date.now()}-${Math.random()}`,
+        file,
+        preview,
+      });
+
+    } catch (err) {
+      console.error("Preview error:", err);
+      showToast("Erreur lors de la prévisualisation.");
+    }
+
+  }
+
+  setImages((prev) => [...prev, ...processedImages]);
+
+};
+*/
+
+  /*
+  const removeImage = (index) => {
+
+    setImages((prev) => {
+      const imageToRemove = prev[index];
+
+      if (imageToRemove?.preview?.startsWith("blob:")) {
+        URL.revokeObjectURL(imageToRemove.preview);
+      }
+
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+  */
