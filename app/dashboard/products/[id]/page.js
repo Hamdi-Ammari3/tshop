@@ -628,11 +628,10 @@ export default function EditProductPage() {
                   className="image-card"
                 >
 
-                  <Image
+                  <img
                     src={img.preview}
                     alt="Produit"
-                    fill
-                    sizes="140px"
+                    loading="lazy"
                     className="preview-image"
                   />
 

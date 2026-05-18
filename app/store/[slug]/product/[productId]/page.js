@@ -225,7 +225,6 @@ export default function ProductPage() {
               src={currentImage}
               alt={product.name}
               fill
-              priority
               className="product-main-img"
             />
 
@@ -260,10 +259,10 @@ export default function ProductPage() {
                     }
                   >
 
-                    <Image
+                    <img
                       src={img}
-                      alt=""
-                      fill
+                      alt="thumbnail image"
+                      loading="lazy"
                       className="thumbnail-image"
                     />
 

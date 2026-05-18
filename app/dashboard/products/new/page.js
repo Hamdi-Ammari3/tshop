@@ -110,7 +110,7 @@ export default function NewProductPage() {
     }, 3500);
   };
 
-  /* CLEANUP */
+  /*
   useEffect(() => {
 
   return () => {
@@ -130,7 +130,77 @@ export default function NewProductPage() {
   };
 
 }, []);
+*/
 
+// HELPER: converts file to base64 data URL
+const readFileAsDataURL = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => reject(new Error("FileReader failed"));
+    reader.readAsDataURL(file);
+  });
+};
+
+const handleFiles = async (files) => {
+
+  if (!files) return;
+
+  const selectedFiles = Array.from(files);
+
+  if (images.length + selectedFiles.length > 10) {
+    showToast("Maximum 10 images.");
+    return;
+  }
+
+  const processedImages = [];
+
+  for (const file of selectedFiles) {
+
+    if (!file.type.startsWith("image/")) {
+      showToast("Veuillez sélectionner uniquement des images.");
+      continue;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showToast("Image trop volumineuse (max 15MB).");
+      continue;
+    }
+
+    try {
+      // USE FileReader INSTEAD OF createObjectURL
+      // Works reliably on all mobile browsers
+      const preview = await readFileAsDataURL(file);
+
+      processedImages.push({
+        id: `${Date.now()}-${Math.random()}`,
+        file,
+        preview, // base64 data URL
+      });
+
+    } catch (err) {
+      console.error("Preview error:", err);
+      showToast("Erreur lors de la prévisualisation.");
+    }
+
+  }
+
+  setImages((prev) => [...prev, ...processedImages]);
+
+};
+
+useEffect(() => {
+  return () => {
+    images.forEach((img) => {
+      // Only revoke blob URLs, not base64
+      if (img.preview?.startsWith("blob:")) {
+        URL.revokeObjectURL(img.preview);
+      }
+    });
+  };
+}, []);
+
+/*
   const handleFiles = async (files) => {
 
   if (!files) return;
@@ -176,8 +246,9 @@ export default function NewProductPage() {
   setImages((prev) => [...prev, ...processedImages]);
 
 };
+*/
 
-  /* REMOVE IMAGE */
+  /*
   const removeImage = (index) => {
 
     setImages((prev) => {
@@ -190,6 +261,18 @@ export default function NewProductPage() {
       return prev.filter((_, i) => i !== index);
     });
   };
+  */
+
+ const removeImage = (index) => {
+  setImages((prev) => {
+    const imageToRemove = prev[index];
+    // Only revoke if it's a blob URL
+    if (imageToRemove?.preview?.startsWith("blob:")) {
+      URL.revokeObjectURL(imageToRemove.preview);
+    }
+    return prev.filter((_, i) => i !== index);
+  });
+};
 
   /* THUMBNAIL */
   const makeThumbnail = (index) => {
@@ -402,6 +485,7 @@ for (let i = 0; i < images.length; i++) {
                   <img
                     src={image.preview}
                     alt="Preview"
+                    loading="lazy"
                     className="preview-image"
                   />
 
