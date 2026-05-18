@@ -111,102 +111,7 @@ export default function NewProductPage() {
     }, 3500);
   };
 
-  /*
-const handleFiles = (files) => {
-
-  if (!files || files.length === 0) return;
-
-  const selectedFiles = Array.from(files);
-
-  setImages((prev) => {
-
-    const currentCount = prev.length;
-
-    if (currentCount >= 10) {
-
-      showToast(
-        "Maximum 10 images atteint."
-      );
-
-      return prev;
-    }
-
-    const remainingSlots =
-      10 - currentCount;
-
-    const allowedFiles =
-      selectedFiles.slice(
-        0,
-        remainingSlots
-      );
-
-    const validImages = [];
-
-    let failedCount = 0;
-
-    for (const file of allowedFiles) {
-
-      // VALIDATE TYPE
-      if (
-        !file.type.startsWith(
-          "image/"
-        )
-      ) {
-
-        failedCount++;
-        continue;
-      }
-
-      // VALIDATE SIZE
-      if (
-        file.size >
-        15 * 1024 * 1024
-      ) {
-
-        failedCount++;
-        continue;
-      }
-
-      try {
-
-        const preview =
-          URL.createObjectURL(
-            file
-          );
-
-        validImages.push({
-          id:
-            crypto.randomUUID(),
-          file,
-          preview,
-        });
-
-      } catch (error) {
-
-        console.log(error);
-
-        failedCount++;
-      }
-    }
-
-    if (failedCount > 0) {
-
-      showToast(
-        `${failedCount} image(s) n'ont pas pu être chargées.`
-      );
-
-    }
-
-    return [
-      ...prev,
-      ...validImages,
-    ];
-  });
-
-};
-*/
-
-const handleFiles = (files) => {
+  const handleFiles = (files) => {
 
   if (!files || files.length === 0) {
     return;
@@ -296,6 +201,7 @@ const handleFiles = (files) => {
           status: "loading",
 
           error: null,
+          retrying: false,
         });
 
       } catch (error) {
@@ -437,32 +343,6 @@ const handleFiles = (files) => {
       setLoading(true);
 
       const uploadedImages = [];
-/*
-for (let i = 0; i < images.length; i++) {
-
-  const image = images[i];
-  setCurrentUploadIndex(i + 1);
-
-  const url = await uploadToCloudinary(
-    image.file,
-    (percent) => {
-      // GLOBAL PROGRESS
-      const totalProgress = ((i + percent / 100) / images.length) * 100;
-      setUploadProgress(Math.round(totalProgress));
-    }
-  );
-
-  // GET WEBP VERSION AUTOMATICALLY
-  // Just inject transformation into the Cloudinary URL
-  const webpUrl = url.replace(
-    "/upload/",
-    "/upload/f_webp,q_auto,w_1200/"
-  );
-
-  uploadedImages.push(webpUrl);
-
-}
-*/
 
 const validUploadImages =
   images.filter(
@@ -695,45 +575,93 @@ for (
   )}
 
   {/* IMAGE */}
-  <img
-    src={image.preview}
-    alt="Preview"
-    loading="lazy"
-    className="preview-image"
+<img
+  src={image.preview}
+  alt="Preview"
+  loading="lazy"
+  className="preview-image"
 
-    onLoad={() => {
+  onLoad={() => {
 
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === image.id
-            ? {
-                ...img,
-                status: "ready",
-              }
-            : img
-        )
-      );
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === image.id
+          ? {
+              ...img,
+              status: "ready",
+            }
+          : img
+      )
+    );
 
-    }}
+  }}
 
-    onError={() => {
+  onError={(e) => {
 
-      setImages((prev) =>
-        prev.map((img) =>
-          img.id === image.id
-            ? {
-                ...img,
-                status: "failed",
+    /*
+    MOBILE BROWSERS sometimes trigger
+    false image errors for blob URLs
+    before image fully resolves.
+    */
 
-                error:
-                  "Image incompatible",
-              }
-            : img
-        )
-      );
+    if (image.retrying) {
+      return;
+    }
 
-    }}
-  />
+    setImages((prev) =>
+      prev.map((img) =>
+        img.id === image.id
+          ? {
+              ...img,
+              retrying: true,
+            }
+          : img
+      )
+    );
+
+    setTimeout(() => {
+
+      /*
+      FORCE RELOAD
+      */
+      e.target.src =
+        image.preview +
+        "#" +
+        Date.now();
+
+      /*
+      AFTER RETRY
+      */
+      setTimeout(() => {
+
+        setImages((prev) =>
+          prev.map((img) =>
+            img.id === image.id
+              ? {
+                  ...img,
+
+                  retrying: false,
+
+                  status:
+                    img.status === "ready"
+                      ? "ready"
+                      : "failed",
+
+                  error:
+                    img.status === "ready"
+                      ? null
+                      : "Image incompatible",
+                }
+              : img
+          )
+        );
+
+      }, 1200);
+
+    }, 500);
+
+  }}
+/>
 
   {/* FAILED */}
   {image.status === "failed" && (
@@ -1194,60 +1122,3 @@ for (
     </div>
   );
 }
-
-/*
-                <div
-                  key={image.id}
-                  className="image-preview"
-                >
-
-                  <img
-                    src={image.preview}
-                    alt="Preview"
-                    loading="lazy"
-                    className="preview-image"
-                  />
-
-                  {index === 0 && (
-
-                    <span className="thumbnail-badge">
-                      Miniature
-                    </span>
-
-                  )}
-
-                  <div className="image-overlay">
-
-                    {index !== 0 ? (
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          makeThumbnail(index)
-                        }
-                      >
-
-                        <FiStar />
-
-                      </button>
-
-                    ) : (
-                      <span></span>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        removeImage(index)
-                      }
-                      className="remove-btn"
-                    >
-
-                      <FiX />
-
-                    </button>
-
-                  </div>
-
-                </div>
-*/
