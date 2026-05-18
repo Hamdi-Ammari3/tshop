@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import imageCompression from "browser-image-compression";
 import { signInWithGoogle } from "../../lib/auth";
-import { DB,storage } from "../../lib/firebaseConfig";
+import { DB } from "../../lib/firebaseConfig";
+import { uploadToCloudinary } from "../../lib/uploadToCloudinary";
 import { doc, setDoc, getDoc } from "firebase/firestore";
-import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
 import { useAuth } from "../../context/AuthContext";
 import { useStore } from "../../context/StoreContext";
 import { FiArrowLeft, FiUpload, FiCheck, FiShoppingBag,FiX,FiAlertCircle } from "react-icons/fi";
@@ -18,14 +18,14 @@ export default function Onboarding() {
     const { user, loading: authLoading } = useAuth();
     const { setStore,setLoading  } = useStore();
 
+    const logoInputRef = useRef(null);
+
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [hasWhatsapp, setHasWhatsapp] = useState(true);
-    const [logoFile, setLogoFile] = useState(null);
-    const [logoPreview, setLogoPreview] = useState(null);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [processingImage, setProcessingImage] = useState(false);
-    const logoInputRef = useRef(null);
+    const [logo, setLogo] = useState(null);
+    const [uploadProgress, setUploadProgress] =useState(0);
+    const [processingImage, setProcessingImage] =useState(false);
 
     const [checkingSlug, setCheckingSlug] = useState(false);
     const [slugAvailable, setSlugAvailable] = useState(true);
@@ -53,7 +53,6 @@ export default function Onboarding() {
 
     }, [user, router]);
 
-    //const slug = name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
     /* CHECK SLUG */
@@ -99,7 +98,6 @@ export default function Onboarding() {
 
     }, [slug]);
 
-    //Upload image
     const handleImageChange = async (e) => {
 
   const file =
@@ -122,13 +120,8 @@ export default function Onboarding() {
       );
 
       return;
-
     }
 
-    /*
-    Allow larger originals
-    because compression happens after
-    */
     if (
       file.size >
       15 * 1024 * 1024
@@ -139,7 +132,6 @@ export default function Onboarding() {
       );
 
       return;
-
     }
 
     const compressedFile =
@@ -148,38 +140,63 @@ export default function Onboarding() {
         {
           maxSizeMB: 0.7,
           maxWidthOrHeight: 1200,
-          useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
-          fileType: "image/webp",
+          useWebWorker:
+            typeof window !==
+              "undefined" &&
+            window.innerWidth >
+              768,
+          fileType:
+            "image/webp",
           initialQuality: 0.75,
           preserveExif: false,
           alwaysKeepResolution: false,
         }
       );
 
-    if (
-      logoPreview?.startsWith(
-        "blob:"
-      )
-    ) {
+    const preview =
+      await new Promise(
+        (
+          resolve,
+          reject
+        ) => {
 
-      URL.revokeObjectURL(
-        logoPreview
+          const reader =
+            new FileReader();
+
+          reader.onload =
+            () =>
+              resolve(
+                reader.result
+              );
+
+          reader.onerror =
+            reject;
+
+          reader.readAsDataURL(
+            compressedFile
+          );
+
+        }
       );
 
-    }
+    setLogo({
 
-    const previewUrl =
-      URL.createObjectURL(
-        compressedFile
-      );
+      id:
+        crypto.randomUUID(),
 
-    setLogoFile(
-      compressedFile
-    );
+      file:
+        compressedFile,
 
-    setLogoPreview(
-      previewUrl
-    );
+      preview,
+
+      status:
+        "loading",
+
+      retrying: false,
+
+      error: null,
+
+    });
 
   } catch (error) {
 
@@ -199,25 +216,11 @@ export default function Onboarding() {
 
 };
 
-useEffect(() => {
-
-  return () => {
-
-    if (
-      logoPreview?.startsWith(
-        "blob:"
-      )
-    ) {
-
-      URL.revokeObjectURL(
-        logoPreview
-      );
-
-    }
-
+  //Remove logo
+  const removeLogo = () => {
+    setLogo(null);
   };
 
-}, []);
 
     //Toast message
     const showToast = (message,type = "error") => {
@@ -284,83 +287,27 @@ useEffect(() => {
             /* UPLOADS */
             let logoUrl = "";
 
-              if (logoFile) {
+            if (
+  logo &&
+  logo.status !== "failed"
+) {
 
-  const storageRef = ref(
-    storage,
-    `stores/${slug}/logo.webp`
-  );
+  const url =
+    await uploadToCloudinary(
+      logo.file,
+      (percent) => {
 
-  const uploadTask =
-    uploadBytesResumable(
-      storageRef,
-      logoFile,
-      {
-        contentType:
-          "image/webp",
+        setUploadProgress(
+          Math.round(percent)
+        );
+
       }
     );
 
   logoUrl =
-    await new Promise(
-      (
-        resolve,
-        reject
-      ) => {
-
-        const timeout =
-          setTimeout(() => {
-
-            reject(
-              new Error(
-                "Upload timeout"
-              )
-            );
-
-          }, 45000);
-
-        uploadTask.on(
-
-          "state_changed",
-
-          (snapshot) => {
-
-            const progress =
-              (
-                snapshot.bytesTransferred /
-                snapshot.totalBytes
-              ) * 100;
-
-            setUploadProgress(
-              Math.round(progress)
-            );
-
-          },
-
-          (error) => {
-
-            clearTimeout(timeout);
-
-            reject(error);
-
-          },
-
-          async () => {
-
-            clearTimeout(timeout);
-
-            const url =
-              await getDownloadURL(
-                uploadTask.snapshot.ref
-              );
-
-            resolve(url);
-
-          }
-
-        );
-
-      }
+    url.replace(
+      "/upload/",
+      "/upload/f_webp,q_auto,w_1200/"
     );
 
 }
@@ -559,63 +506,203 @@ useEffect(() => {
         </div>
 
         {/* LOGO */}
-        <div className="upload-grid">
+        <div
+          className={`upload-area ${logo?.status === "failed"? "upload-area-failed": ""}`}
+          onClick={() => {
+            logoInputRef.current?.click();
+          }}
+        >
 
-          <div className="upload-box">
+      {processingImage ? (
 
-            <label>
-              Logo
-            </label>
+    <div className="upload-processing">
 
-            <div
-              className="upload-area"
-              onClick={() =>
-                logoInputRef.current.click()
-              }
-            >
+      <div className="upload-spinner"></div>
 
-              {processingImage ? (
+      <span>
+        Compression...
+      </span>
 
-  <div className="upload-processing">
+    </div>
 
-    <div className="upload-spinner"></div>
+  ) : logo ? (
 
-    <span>
-      Compression...
-    </span>
+    <>
 
-  </div>
+      {logo.status === "loading" && (
 
-) : logoPreview ? (
-                <img
-                  src={logoPreview}
-                  alt="logo"
-                />
-              ) : (
-                <div className="upload-placeholder">
+        <div className="logo-loading">
 
-                  <FiUpload />
-
-                  <span>
-                    Ajouter un logo
-                  </span>
-
-                </div>
-              )}
-
-            </div>
-
-            <input
-              type="file"
-              accept="image/*"
-              ref={logoInputRef}
-              hidden
-              onChange={(e) => handleImageChange(e)}
-            />
-
-          </div>
+          <div className="logo-loading-spinner"></div>
 
         </div>
+
+      )}
+
+      <img
+        src={logo.preview}
+        alt="logo"
+
+        onLoad={() => {
+
+          setLogo((prev) => {
+
+            if (!prev) {
+              return null;
+            }
+
+            return {
+              ...prev,
+              status: "ready",
+            };
+
+          });
+
+        }}
+
+        onError={(e) => {
+
+          if (
+            logo.retrying
+          ) {
+            return;
+          }
+
+          setLogo((prev) => {
+
+            if (!prev) {
+              return null;
+            }
+
+            return {
+              ...prev,
+              retrying: true,
+            };
+
+          });
+
+          setTimeout(() => {
+
+            e.target.src =
+              logo.preview +
+              "#" +
+              Date.now();
+
+            setTimeout(() => {
+
+              setLogo((prev) => {
+
+                if (!prev) {
+                  return null;
+                }
+
+                return {
+
+                  ...prev,
+
+                  retrying: false,
+
+                  status:
+                    prev.status ===
+                    "ready"
+                      ? "ready"
+                      : "failed",
+
+                  error:
+                    prev.status ===
+                    "ready"
+                      ? null
+                      : "Image incompatible",
+
+                };
+
+              });
+
+            }, 1200);
+
+          }, 500);
+
+        }}
+      />
+
+      {logo.status === "failed" && (
+
+        <div className="logo-error-overlay">
+
+          <FiAlertCircle />
+
+          <p>
+            Image incompatible
+          </p>
+
+          <small>
+            Essayez une autre photo
+          </small>
+
+          <button
+            type="button"
+            onClick={(e) => {
+
+              e.stopPropagation();
+
+              removeLogo();
+
+            }}
+          >
+
+            Supprimer
+
+          </button>
+
+        </div>
+
+      )}
+
+      {logo.status !== "failed" && (
+
+        <button
+          type="button"
+          className="remove-logo-btn"
+          onClick={(e) => {
+
+            e.stopPropagation();
+
+            removeLogo();
+
+          }}
+        >
+
+          <FiX />
+
+        </button>
+
+      )}
+
+    </>
+
+  ) : (
+
+    <div className="upload-placeholder">
+
+      <FiUpload />
+
+      <span>
+        Ajouter un logo
+      </span>
+
+    </div>
+
+  )}
+
+        </div>   
+
+        <input
+  type="file"
+  accept="image/*"
+  hidden
+  ref={logoInputRef}
+  onChange={handleImageChange}
+/>
 
         {/* PHONE */}
         <div className="form-group">
@@ -743,9 +830,9 @@ useEffect(() => {
 
           <div className="preview-logo">
 
-            {logoPreview ? (
+            {logo ? (
               <img
-                src={logoPreview}
+                src={logo.preview}
                 alt="logo"
               />
             ) : (

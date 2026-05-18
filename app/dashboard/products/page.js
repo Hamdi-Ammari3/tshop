@@ -48,9 +48,10 @@ export default function ProductsPage() {
   /* DELETE PRODUCT */
   async function handleDelete(productId) {
 
-  const confirmDelete = window.confirm(
-    "Voulez-vous vraiment supprimer ce produit ?"
-  );
+  const confirmDelete =
+    window.confirm(
+      "Voulez-vous vraiment supprimer ce produit ?"
+    );
 
   if (!confirmDelete) return;
 
@@ -60,7 +61,7 @@ export default function ProductsPage() {
 
     setDeletingId(productId);
 
-    /* FIND PRODUCT */
+    //FIND PRODUCT
     const product =
       products.find(
         (item) =>
@@ -68,54 +69,67 @@ export default function ProductsPage() {
       );
 
     if (!product) {
+
       throw new Error(
         "Produit introuvable."
       );
+
     }
 
-    /* DELETE STORAGE IMAGES */
+    /*
+    DELETE CLOUDINARY IMAGES
+    */
     if (
       product.images &&
       product.images.length > 0
     ) {
 
-      await Promise.all(
+      const response =
+        await fetch(
+          "/api/delete-cloudinary-images",
+          {
+            method: "POST",
 
-        product.images.map(
-          async (imageUrl) => {
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
 
-            try {
-
-              const imageRef =
-                ref(
-                  storage,
-                  imageUrl
-                );
-
-              await deleteObject(
-                imageRef
-              );
-
-            } catch (error) {
-
-              console.log(
-                "Erreur suppression image:",
-                error
-              );
-
-            }
-
+            body: JSON.stringify({
+              images:
+                product.images,
+            }),
           }
-        )
-      );
+        );
+
+      if (!response.ok) {
+
+        throw new Error(
+          "Erreur suppression images."
+        );
+
+      }
+
     }
 
-    /* DELETE FIRESTORE DOC */
+    /*
+    DELETE FIRESTORE DOC
+    */
     await deleteDoc(
       doc(
         DB,
         "products",
         productId
+      )
+    );
+
+    /*
+    REMOVE LOCALLY
+    */
+    setProducts((prev) =>
+      prev.filter(
+        (item) =>
+          item.id !== productId
       )
     );
 

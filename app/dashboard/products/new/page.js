@@ -189,16 +189,13 @@ export default function NewProductPage() {
           );
 
         validImages.push({
-          id:
-            crypto.randomUUID(),
-          file,
-          preview,
-
-          status: "loading",
-
-          error: null,
-          retrying: false,
-        });
+            id: crypto.randomUUID(),
+            file,
+            preview,
+            status: "loading",
+            error: null,
+            retrying: false,
+          });
 
       } catch (error) {
 

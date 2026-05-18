@@ -148,6 +148,8 @@ export default function EditProductPage() {
       preview: url,
       existing: true,
       status: "ready",
+      retrying: false,
+      error: null,
     })
   )
 );
@@ -314,7 +316,11 @@ export default function EditProductPage() {
 
         existing: false,
 
-        status: "ready",
+        status: "loading",
+
+retrying: false,
+
+error: null,
 
       });
 
@@ -496,6 +502,17 @@ for (
 
   try {
 
+    setImages((prev) =>
+  prev.map((img) =>
+    img.id === image.id
+      ? {
+          ...img,
+          status: "uploading",
+        }
+      : img
+  )
+);
+
     const url =
       await uploadToCloudinary(
         image.file,
@@ -529,6 +546,17 @@ for (
       webpUrl
     );
 
+    setImages((prev) =>
+  prev.map((img) =>
+    img.id === image.id
+      ? {
+          ...img,
+          status: "uploaded",
+        }
+      : img
+  )
+);
+
   } catch (error) {
 
     console.log(error);
@@ -539,6 +567,8 @@ for (
           ? {
               ...img,
               status: "failed",
+
+error: "Échec upload",
             }
           : img
       )
@@ -654,16 +684,110 @@ for (
     img.status === "failed"
       ? "image-card-failed"
       : ""
+  } ${
+    img.status === "uploaded"
+      ? "uploaded"
+      : ""
   }`}
 >
 
+  {/* LOADING */}
+  {(img.status === "loading" ||
+    img.status === "uploading") && (
+
+    <div className="image-loading">
+
+      <div className="image-loading-spinner"></div>
+
+    </div>
+
+  )}
+
+  {/* IMAGE */}
   <img
     src={img.preview}
     alt="Produit"
     loading="lazy"
     className="preview-image"
+
+    onLoad={() => {
+
+      setImages((prev) =>
+        prev.map((image) =>
+          image.id === img.id
+            ? {
+                ...image,
+
+                status:
+                  image.status === "uploading"
+                    ? "uploading"
+                    : "ready",
+              }
+            : image
+        )
+      );
+
+    }}
+
+    onError={(e) => {
+
+      if (img.retrying) {
+        return;
+      }
+
+      setImages((prev) =>
+        prev.map((image) =>
+          image.id === img.id
+            ? {
+                ...image,
+                retrying: true,
+              }
+            : image
+        )
+      );
+
+      /*
+      MOBILE RETRY
+      */
+      setTimeout(() => {
+
+        e.target.src =
+          img.preview +
+          "#" +
+          Date.now();
+
+        setTimeout(() => {
+
+          setImages((prev) =>
+            prev.map((image) =>
+              image.id === img.id
+                ? {
+                    ...image,
+
+                    retrying: false,
+
+                    status:
+                      image.status === "ready"
+                        ? "ready"
+                        : "failed",
+
+                    error:
+                      image.status === "ready"
+                        ? null
+                        : "Image incompatible",
+                  }
+                : image
+            )
+          );
+
+        }, 1200);
+
+      }, 500);
+
+    }}
   />
 
+  {/* FAILED */}
   {img.status === "failed" && (
 
     <div className="image-error-overlay">
@@ -693,6 +817,7 @@ for (
 
   )}
 
+  {/* THUMBNAIL */}
   {index === 0 && (
 
     <span className="thumbnail-badge">
@@ -703,6 +828,7 @@ for (
 
   )}
 
+  {/* ACTIONS */}
   <div className="image-overlay">
 
     {index !== 0 && (
