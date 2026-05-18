@@ -20,7 +20,7 @@ export default function Home() {
 
         <div>
           <span className="hero-badge">
-            <LuSparkles color="#006de2" />
+            <LuSparkles color="#ff7a18" />
             Disponible en Tunisie
           </span>
         </div>
@@ -82,7 +82,7 @@ export default function Home() {
 
         <div className="hero-image-box">
           <img
-            src="/hero.jpg"
+            src="/hero.png"
             alt="Boutique en ligne"
             className="hero-image"
           />

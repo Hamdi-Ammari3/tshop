@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState,useRef } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {collection,addDoc,serverTimestamp} from "firebase/firestore";
 import { DB } from "../../../../lib/firebaseConfig";
@@ -14,7 +14,6 @@ export default function NewProductPage() {
 
   const router = useRouter();
   const { store } = useStore();
-  const imagesRef = useRef([]);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState(null);
@@ -145,29 +144,24 @@ export default function NewProductPage() {
 
     const validImages = [];
 
-    let failedCount = 0;
-
     for (const file of allowedFiles) {
 
+      /*
+      ONLY CHECK IMAGE TYPE
+      */
       if (
         !file.type.startsWith(
           "image/"
         )
       ) {
 
-        failedCount++;
         continue;
+
       }
 
-      if (
-        file.size >
-        15 * 1024 * 1024
-      ) {
-
-        failedCount++;
-        continue;
-      }
-
+      /*
+      PREVENT DUPLICATES
+      */
       const alreadyExists =
         prev.some(
           (img) =>
@@ -181,35 +175,21 @@ export default function NewProductPage() {
         continue;
       }
 
-      try {
+      const preview =
+        URL.createObjectURL(
+          file
+        );
 
-        const preview =
-          URL.createObjectURL(
-            file
-          );
+      validImages.push({
 
-        validImages.push({
-            id: crypto.randomUUID(),
-            file,
-            preview,
-            status: "loading",
-            error: null,
-            retrying: false,
-          });
+        id:
+          crypto.randomUUID(),
 
-      } catch (error) {
+        file,
 
-        console.log(error);
+        preview,
 
-        failedCount++;
-      }
-    }
-
-    if (failedCount > 0) {
-
-      showToast(
-        "Certaines images n'ont pas pu être chargées. Essayez une autre photo."
-      );
+      });
 
     }
 
@@ -217,18 +197,16 @@ export default function NewProductPage() {
       ...prev,
       ...validImages,
     ];
-  });
-};
 
-  useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
+  });
+
+};
 
   useEffect(() => {
 
   return () => {
 
-    imagesRef.current.forEach((img) => {
+    images.forEach((img) => {
 
       if (
         img.preview?.startsWith(
@@ -246,7 +224,7 @@ export default function NewProductPage() {
 
   };
 
-}, []);
+}, [images]);
 
  const removeImage = (index) => {
   setImages((prev) => {
@@ -332,115 +310,52 @@ export default function NewProductPage() {
 
       const uploadedImages = [];
 
-const validUploadImages =
-  images.filter(
-    (img) =>
-      img.status !== "failed"
-  );
-
-if (
-  validUploadImages.length === 0
-) {
-
-  showToast(
-    "Aucune image valide."
-  );
-
-  setLoading(false);
-
-  return;
-}
-
 for (
   let i = 0;
-  i < validUploadImages.length;
+  i < images.length;
   i++
 ) {
 
   const image =
-    validUploadImages[i];
+    images[i];
 
   setCurrentUploadIndex(
     i + 1
   );
 
-  try {
+  const url =
+    await uploadToCloudinary(
+      image.file,
+      (percent) => {
 
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === image.id
-          ? {
-              ...img,
-              status:
-                "uploading",
-            }
-          : img
-      )
-    );
-
-    const url =
-      await uploadToCloudinary(
-        image.file,
-        (percent) => {
-
-          const totalProgress =
+        const totalProgress =
+          (
             (
-              (
-                i +
-                percent / 100
-              ) /
-              validUploadImages.length
-            ) * 100;
+              i +
+              percent / 100
+            ) /
+            images.length
+          ) * 100;
 
-          setUploadProgress(
-            Math.round(
-              totalProgress
-            )
-          );
-        }
-      );
+        setUploadProgress(
+          Math.round(
+            totalProgress
+          )
+        );
 
-    const webpUrl =
-      url.replace(
-        "/upload/",
-        "/upload/f_webp,q_auto,w_1200/"
-      );
-
-    uploadedImages.push(
-      webpUrl
+      }
     );
 
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === image.id
-          ? {
-              ...img,
-              status:
-                "uploaded",
-            }
-          : img
-      )
+  const webpUrl =
+    url.replace(
+      "/upload/",
+      "/upload/f_webp,q_auto,w_1200/"
     );
 
-  } catch (error) {
+  uploadedImages.push(
+    webpUrl
+  );
 
-    console.log(error);
-
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === image.id
-          ? {
-              ...img,
-              status:
-                "failed",
-
-              error:
-                "Échec upload",
-            }
-          : img
-      )
-    );
-  }
 }
 
       await addDoc(collection(DB, "products"),{
@@ -481,7 +396,7 @@ for (
 
     } catch (error) {
       console.log("UPLOAD ERROR:",error);
-      showToast(error?.message ||"Une erreur est survenue.");
+      showToast("Une erreur est survenue.");
     } finally {
       setLoading(false);
       setUploadProgress(0);
@@ -537,172 +452,63 @@ for (
           <div className="images-grid">
 
             {images.map(
-              (image, index) => (
-                <div
-  key={image.id}
-  className={`image-preview ${
-    image.status === "failed"
-      ? "image-preview-failed"
-      : ""
-  }`}
->
+  (image, index) => (
 
-  {image.status === "loading" && (
-
-    <div className="image-loading">
-
-      <div className="image-loading-spinner"></div>
-
-    </div>
-
-  )}
-
-<img
-  src={image.preview}
-  alt="Preview"
-  loading="lazy"
-  className="preview-image"
-
-  onLoad={() => {
-
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === image.id
-          ? {
-              ...img,
-              status: "ready",
-            }
-          : img
-      )
-    );
-
-  }}
-
-  onError={(e) => {
-    if (image.retrying) {
-      return;
-    }
-
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === image.id
-          ? {
-              ...img,
-              retrying: true,
-            }
-          : img
-      )
-    );
-
-    setTimeout(() => {
-
-      e.target.src =
-        image.preview +
-        "#" +
-        Date.now();
-
-      setTimeout(() => {
-
-        setImages((prev) =>
-          prev.map((img) =>
-            img.id === image.id
-              ? {
-                  ...img,
-
-                  retrying: false,
-
-                  status:
-                    img.status === "ready"
-                      ? "ready"
-                      : "failed",
-
-                  error:
-                    img.status === "ready"
-                      ? null
-                      : "Image incompatible",
-                }
-              : img
-          )
-        );
-
-      }, 1200);
-
-    }, 500);
-
-  }}
-/>
-
-  {image.status === "failed" && (
-
-    <div className="image-error-overlay">
-
-      <FiAlertCircle />
-
-      <p>
-        Image non compatible
-      </p>
-
-      <small>
-        Essayez une autre photo
-      </small>
-
-      <button
-        type="button"
-        onClick={() =>
-          removeImage(index)
-        }
-      >
-
-        Supprimer
-
-      </button>
-
-    </div>
-
-  )}
-
-  {index === 0 && (
-    <span className="thumbnail-badge">
-      Miniature
-    </span>
-  )}
-
-  <div className="image-overlay">
-
-    {index !== 0 ? (
-
-      <button
-        type="button"
-        onClick={() =>
-          makeThumbnail(index)
-        }
-      >
-
-        <FiStar />
-
-      </button>
-
-    ) : (
-      <span></span>
-    )}
-
-    <button
-      type="button"
-      onClick={() =>
-        removeImage(index)
-      }
-      className="remove-btn"
+    <div
+      key={image.id}
+      className="image-preview"
     >
 
-      <FiX />
+      <img
+        src={image.preview}
+        alt="Preview"
+        loading="lazy"
+        className="preview-image"
+      />
 
-    </button>
+      {index === 0 && (
+        <span className="thumbnail-badge">
+          Miniature
+        </span>
+      )}
 
-  </div>
+      <div className="image-overlay">
 
-</div>
-              )
-            )}
+        {index !== 0 ? (
+
+          <button
+            type="button"
+            onClick={() =>
+              makeThumbnail(index)
+            }
+          >
+
+            <FiStar />
+
+          </button>
+
+        ) : (
+          <span></span>
+        )}
+
+        <button
+          type="button"
+          onClick={() =>
+            removeImage(index)
+          }
+          className="remove-btn"
+        >
+
+          <FiX />
+
+        </button>
+
+      </div>
+
+    </div>
+
+  )
+)}
 
             {images.length < 10 && (
 

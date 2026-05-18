@@ -95,95 +95,6 @@ export default function Onboarding() {
 
     }, [slug]);
 
-    /*
-    const handleImageChange = (e) => {
-
-  const file =
-    e.target.files?.[0];
-
-  if (!file) {
-    return;
-  }
-
-  try {
-
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      showToast(
-        "Veuillez sélectionner une image"
-      );
-
-      return;
-    }
-
-    if (
-      file.size >
-      15 * 1024 * 1024
-    ) {
-
-      showToast(
-        "Image trop volumineuse"
-      );
-
-      return;
-    }
-
-    if (
-      logo?.preview?.startsWith(
-        "blob:"
-      )
-    ) {
-
-      URL.revokeObjectURL(
-        logo.preview
-      );
-
-    }
-
-    const preview =
-      URL.createObjectURL(
-        file
-      );
-
-    setLogo({
-
-      id:
-        crypto.randomUUID(),
-
-      file,
-
-      preview,
-
-      status:
-        "loading",
-
-      retrying: false,
-
-      error: null,
-
-    });
-
-  } catch (error) {
-
-    console.log(error);
-
-    showToast(
-      "Erreur lors du chargement de l'image"
-    );
-
-  } finally {
-
-    e.target.value = "";
-
-  }
-
-};
-*/
-
 const handleImageChange = (e) => {
 
   const file =
@@ -206,9 +117,6 @@ const handleImageChange = (e) => {
     return;
   }
 
-  /*
-  CLEAN OLD PREVIEW
-  */
   if (
     logo?.preview?.startsWith(
       "blob:"
@@ -339,28 +247,6 @@ const removeLogo = () => {
 
             /* UPLOADS */
             let logoUrl = "";
-
-            /*
-            if (logo) {
-              if (logo.status === "failed") {
-                showToast("Veuillez changer le logo.");
-                setSubmitting(false);
-                return;
-              }
-
-              setLogo((prev) => ({
-                ...prev,
-                status: "uploading",
-              }));
-
-              const url = await uploadToCloudinary(logo.file,(percent) => {
-                setUploadProgress(Math.round(percent));
-              });
-
-              logoUrl = url.replace("/upload/","/upload/f_webp,q_auto,w_1200/");
-
-            }
-            */
 
             if (logo) {
 
@@ -592,7 +478,6 @@ const removeLogo = () => {
 
         </div>
 
-        {/* LOGO */}
         {/* LOGO */}
 <div
   className="upload-area"

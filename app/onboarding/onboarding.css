@@ -326,8 +326,8 @@
 /* Upload preview */
 .upload-area {
   height: 200px;
-  width: 250px;
-  margin-top: 10px;
+  width: 200px;
+  margin-top: 20px;
   border: 2px dashed #ddd;
   border-radius: 12px;
   display: flex;
@@ -336,7 +336,6 @@
   cursor: pointer;
   overflow: hidden;
   background: #fafafa;
-  margin-top: 10px;
 }
 
 .upload-area:hover {
