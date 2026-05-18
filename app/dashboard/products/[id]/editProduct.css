@@ -716,3 +716,63 @@
 
   color: #6b7280;
 }
+
+.image-card-failed {
+  border-color: #ef4444;
+}
+
+.image-error-overlay {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(0,0,0,0.82);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+
+  padding: 14px;
+
+  z-index: 4;
+}
+
+.image-error-overlay svg {
+  font-size: 28px;
+  color: #ef4444;
+}
+
+.image-error-overlay p {
+  margin-top: 10px;
+
+  color: white;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.image-error-overlay small {
+  margin-top: 4px;
+
+  color: rgba(255,255,255,0.7);
+
+  font-size: 11px;
+}
+
+.image-error-overlay button {
+  margin-top: 12px;
+
+  border: none;
+  border-radius: 10px;
+
+  padding: 8px 14px;
+
+  background: white;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
