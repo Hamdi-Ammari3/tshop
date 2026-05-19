@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import {FiBox,FiExternalLink,FiCopy,FiCheck,FiShoppingBag,FiDollarSign,FiPlus,FiPhone,FiLogOut,FiAlertCircle} from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import { ClipLoader } from "react-spinners";
+import {FiLoader} from "react-icons/fi";
 import "./dashboard.css";
 
 export default function DashboardHome() {
@@ -51,10 +52,7 @@ export default function DashboardHome() {
 
         <div className="dashboard-loading-card">
 
-          <ClipLoader
-            color="#006de2"
-            size={42}
-          />
+          <FiLoader className="spin-icon" />
 
           <h3>
             Chargement du tableau de bord...
@@ -272,9 +270,9 @@ export default function DashboardHome() {
             >
 
               {copied ? (
-                <FiCheck />
+                <FiCheck size={24}/>
               ) : (
-                <FiCopy />
+                <FiCopy size={24}/>
               )}
 
             </button>
@@ -282,12 +280,13 @@ export default function DashboardHome() {
           </div>
 
           <div className="store-link-box">
-
-            {store.hasWhatsapp ? (
-              <FaWhatsapp />
-            ) : (
-              <FiPhone />
-            )}
+            <button className="copy-btn">
+              {store.hasWhatsapp ? (
+                <FaWhatsapp size={22}/>
+              ) : (
+                <FiPhone size={22}/>
+              )}
+            </button>
 
             <span className="store-domain">
               +216 {store.phone}
@@ -307,11 +306,7 @@ export default function DashboardHome() {
           const Icon = item.icon;
 
           return (
-            <div
-              key={index}
-              className="stat-card"
-            >
-
+            <div key={index} className="stat-card">
               <div className="stat-top">
 
                 <p>
@@ -482,7 +477,7 @@ export default function DashboardHome() {
         className="preview-btn"
       >
 
-        <FiExternalLink />
+        <FiExternalLink size={20}/>
 
         Voir la boutique
 

@@ -149,6 +149,8 @@ export default function ProductPage() {
         );
 
         router.push("/checkout");
+        //router.push("http://localhost:3000/store/store-one/checkout");
+        
 
       } finally {
 
@@ -237,8 +239,7 @@ export default function ProductPage() {
           </div>
 
           {/* THUMBNAILS */}
-          {product.images?.length >
-            1 && (
+          {product.images?.length > 1 && (
             <div className="product-thumbnails">
 
               {product.images.map(
@@ -397,9 +398,7 @@ export default function ProductPage() {
 
             <button
               className="buy-now-btn"
-              onClick={
-                handleBuyNow
-              }
+              onClick={handleBuyNow}
               disabled={ordering}
             >
 

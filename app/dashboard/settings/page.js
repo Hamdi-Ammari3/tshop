@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import {FiUpload,FiSave,FiPhone,FiTruck,FiCheckCircle,FiX,FiAlertCircle} from "react-icons/fi";
-import imageCompression from "browser-image-compression";
 import { doc, updateDoc } from "firebase/firestore";
-import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
-import {DB,storage} from "../../../lib/firebaseConfig";
+import {DB} from "../../../lib/firebaseConfig";
+import { uploadToCloudinary } from "../../../lib/uploadToCloudinary";
 import { useStore } from "../../../context/StoreContext";
 import { ClipLoader } from "react-spinners";
 import "./settings.css";
@@ -18,10 +17,8 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [hasWhatsapp, setHasWhatsapp] = useState(false);
   const [shippingFee, setShippingFee] = useState(8);
-  const [logo, setLogo] = useState("");
-  const [logoFile, setLogoFile] = useState(null);
+  const [logo, setLogo] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [processingImage, setProcessingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [toast, setToast] = useState(null);
 
@@ -41,29 +38,15 @@ export default function SettingsPage() {
       store.shipping_fee || 8
     );
 
-    setLogo(store.logo || "");
+    setLogo(
+  store.logo
+    ? {
+        preview: store.logo,
+      }
+    : null
+);
 
   }, [store]);
-
-  useEffect(() => {
-
-  return () => {
-
-    if (
-      logo?.startsWith(
-        "blob:"
-      )
-    ) {
-
-      URL.revokeObjectURL(
-        logo
-      );
-
-    }
-
-  };
-
-}, []);
 
   /* TOAST */
   const showToast = (message,type = "error") => {
@@ -75,99 +58,77 @@ export default function SettingsPage() {
   };
 
   /* HANDLE LOGO */
-  const handleLogoChange = async (e) => {
+  const handleLogoChange = (e) => {
 
   const file =
     e.target.files?.[0];
 
-  if (!file) return;
+  if (!file) {
+    return;
+  }
 
-  try {
+  if (
+    !file.type.startsWith(
+      "image/"
+    )
+  ) {
 
-    setProcessingImage(true);
+    showToast(
+      "Veuillez sélectionner une image."
+    );
+
+    return;
+
+  }
+
+  /*
+  CLEAN OLD BLOB
+  */
+  if (
+    logo?.preview?.startsWith(
+      "blob:"
+    )
+  ) {
+
+    URL.revokeObjectURL(
+      logo.preview
+    );
+
+  }
+
+  const preview =
+    URL.createObjectURL(
+      file
+    );
+
+  setLogo({
+    file,
+    preview,
+  });
+
+  e.target.value = "";
+
+};
+
+useEffect(() => {
+
+  return () => {
 
     if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      showToast("Veuillez sélectionner une image valide.");
-
-      return;
-
-    }
-
-    /*
-    Allow larger originals
-    because compression happens later
-    */
-    if (
-      file.size >
-      15 * 1024 * 1024
-    ) {
-
-      showToast("Image trop volumineuse.");
-
-      return;
-
-    }
-
-    const compressedFile =
-      await imageCompression(
-        file,
-        {
-          maxSizeMB: 0.7,
-          maxWidthOrHeight: 1200,
-          useWebWorker: typeof window !== "undefined" && window.innerWidth > 768,
-          fileType: "image/webp",
-          initialQuality: 0.75,
-          preserveExif: false,
-          alwaysKeepResolution: false,
-        }
-      );
-
-    /*
-    CLEAN OLD BLOB
-    */
-    if (
-      logo?.startsWith(
+      logo?.preview?.startsWith(
         "blob:"
       )
     ) {
 
       URL.revokeObjectURL(
-        logo
+        logo.preview
       );
 
     }
 
-    const previewUrl =
-      URL.createObjectURL(
-        compressedFile
-      );
+  };
 
-    setLogo(previewUrl);
-
-    setLogoFile(
-      compressedFile
-    );
-
-  } catch (error) {
-
-    console.log(error);
-
-    showToast("Erreur lors du traitement de l'image.");
-
-  } finally {
-
-    setProcessingImage(false);
-
-    e.target.value = "";
-
-  }
-
-};
+}, []);
 
   const tunisianPhoneRegex = /^(2|4|5|9)\d{7}$/;
 
@@ -199,84 +160,27 @@ export default function SettingsPage() {
       let logoUrl = logo;
 
       /* UPLOAD LOGO */
-      if (logoFile) {
-        const logoRef = ref(
-  storage,
-  `stores/${store.id}/logo.webp`
-);
+      if (logo?.file) {
 
-const uploadTask =
-  uploadBytesResumable(
-    logoRef,
-    logoFile,
-    {
-      contentType:
-        "image/webp",
-    }
-  );
+  const url =
+    await uploadToCloudinary(
+      logo.file,
+      (percent) => {
 
-logoUrl =
-  await new Promise(
-    (
-      resolve,
-      reject
-    ) => {
+        setUploadProgress(
+          Math.round(percent)
+        );
 
-      const timeout =
-        setTimeout(() => {
-
-          reject(
-            new Error(
-              "Upload timeout"
-            )
-          );
-
-        }, 45000);
-
-      uploadTask.on(
-
-        "state_changed",
-
-        (snapshot) => {
-
-          const progress =
-            (
-              snapshot.bytesTransferred /
-              snapshot.totalBytes
-            ) * 100;
-
-          setUploadProgress(
-            Math.round(progress)
-          );
-
-        },
-
-        (error) => {
-
-          clearTimeout(timeout);
-
-          reject(error);
-
-        },
-
-        async () => {
-
-          clearTimeout(timeout);
-
-          const url =
-            await getDownloadURL(
-              uploadTask.snapshot.ref
-            );
-
-          resolve(url);
-
-        }
-
-      );
-
-    }
-  );
       }
+    );
+
+  logoUrl =
+    url.replace(
+      "/upload/",
+      "/upload/f_webp,q_auto,w_1200/"
+    );
+
+}
 
       /* UPDATE STORE */
       await updateDoc(
@@ -348,22 +252,10 @@ logoUrl =
 
             <div className="logo-preview">
 
-              {processingImage ? (
-
-  <div className="logo-processing">
-
-    <div className="logo-spinner"></div>
-
-    <span>
-      Compression...
-    </span>
-
-  </div>
-
-) : logo ? (
+              {logo ? (
 
   <img
-    src={logo}
+    src={logo.preview}
     alt="Logo boutique"
   />
 

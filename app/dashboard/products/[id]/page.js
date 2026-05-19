@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {useParams,useRouter} from "next/navigation";
 import {doc,getDoc,updateDoc,serverTimestamp} from "firebase/firestore";
-import {ref,uploadBytesResumable,getDownloadURL} from "firebase/storage";
-import imageCompression from "browser-image-compression";
-import {DB,storage} from "../../../../lib/firebaseConfig";
+import {DB} from "../../../../lib/firebaseConfig";
 import { uploadToCloudinary } from "../../../../lib/uploadToCloudinary";
 import {FiArrowLeft,FiUpload,FiX,FiStar,FiSave,FiAlertCircle} from "react-icons/fi";
 import "./editProduct.css";
@@ -16,7 +13,6 @@ export default function EditProductPage() {
 
   const params = useParams();
   const router = useRouter();
-  const imagesRef = useRef([]);
   const productId = params.id;
 
   const [loading, setLoading] = useState(true);
@@ -175,12 +171,8 @@ export default function EditProductPage() {
   }, [productId]);
 
   
-  useEffect(() => {
-    imagesRef.current = images;
-  }, [images]);
-
   /* CLEANUP */
-  useEffect(() => {
+useEffect(() => {
 
   return () => {
 
@@ -188,7 +180,9 @@ export default function EditProductPage() {
 
       if (
         !img.existing &&
-        img.preview?.startsWith("blob:")
+        img.preview?.startsWith(
+          "blob:"
+        )
       ) {
 
         URL.revokeObjectURL(
@@ -203,9 +197,7 @@ export default function EditProductPage() {
 
 }, [images]);
 
-
-  /* HANDLE FILES */
-  const handleFiles = async (files) => {
+const handleFiles = (files) => {
 
   if (!files || files.length === 0) {
     return;
@@ -214,95 +206,66 @@ export default function EditProductPage() {
   const selectedFiles =
     Array.from(files);
 
-  const currentCount =
-    imagesRef.current.length;
+  setImages((prev) => {
 
-  if (currentCount >= 10) {
+    const currentCount =
+      prev.length;
 
-    showToast(
-      "Maximum 10 images atteint."
-    );
+    if (currentCount >= 10) {
 
-    return;
-  }
-
-  const remainingSlots =
-    10 - currentCount;
-
-  const allowedFiles =
-    selectedFiles.slice(
-      0,
-      remainingSlots
-    );
-
-  const validImages = [];
-
-  let failedCount = 0;
-
-  for (const file of allowedFiles) {
-
-    /* TYPE */
-    if (
-      !file.type.startsWith(
-        "image/"
-      )
-    ) {
-
-      failedCount++;
-      continue;
-    }
-
-    /* SIZE */
-    if (
-      file.size >
-      15 * 1024 * 1024
-    ) {
-
-      failedCount++;
-      continue;
-    }
-
-    /* DUPLICATE */
-    const alreadyExists =
-      imagesRef.current.some(
-        (img) =>
-          img.file?.name ===
-            file.name &&
-          img.file?.size ===
-            file.size
+      showToast(
+        "Maximum 10 images atteint."
       );
 
-    if (alreadyExists) {
-      continue;
+      return prev;
+
     }
 
-    try {
+    const remainingSlots =
+      10 - currentCount;
+
+    const allowedFiles =
+      selectedFiles.slice(
+        0,
+        remainingSlots
+      );
+
+    const validImages = [];
+
+    for (const file of allowedFiles) {
 
       /*
-      MOBILE SAFE PREVIEW
+      ONLY CHECK IMAGE TYPE
       */
+      if (
+        !file.type.startsWith(
+          "image/"
+        )
+      ) {
+
+        continue;
+
+      }
+
+      /*
+      PREVENT DUPLICATES
+      */
+      const alreadyExists =
+        prev.some(
+          (img) =>
+            img.file?.name ===
+              file.name &&
+            img.file?.size ===
+              file.size
+        );
+
+      if (alreadyExists) {
+        continue;
+      }
 
       const preview =
-        await new Promise(
-          (resolve, reject) => {
-
-            const reader =
-              new FileReader();
-
-            reader.onload =
-              () =>
-                resolve(
-                  reader.result
-                );
-
-            reader.onerror =
-              reject;
-
-            reader.readAsDataURL(
-              file
-            );
-
-          }
+        URL.createObjectURL(
+          file
         );
 
       validImages.push({
@@ -316,67 +279,46 @@ export default function EditProductPage() {
 
         existing: false,
 
-        status: "loading",
-
-retrying: false,
-
-error: null,
-
       });
 
-    } catch (error) {
-
-      console.log(error);
-
-      failedCount++;
     }
-  }
 
-  if (failedCount > 0) {
-
-    showToast(
-      "Certaines images n'ont pas pu être chargées."
-    );
-
-  }
-
-  if (validImages.length > 0) {
-
-    setImages((prev) => [
+    return [
       ...prev,
       ...validImages,
-    ]);
+    ];
 
-  }
+  });
 
 };
 
-  /* REMOVE IMAGE */
   const removeImage = (index) => {
 
-    setImages((prev) => {
+  setImages((prev) => {
 
-      const imageToRemove =
-        prev[index];
+    const imageToRemove =
+      prev[index];
 
-      if (
-        imageToRemove &&
-        !imageToRemove.existing
-      ) {
+    if (
+      !imageToRemove?.existing &&
+      imageToRemove?.preview?.startsWith(
+        "blob:"
+      )
+    ) {
 
-        URL.revokeObjectURL(
-          imageToRemove.preview
-        );
-
-      }
-
-      return prev.filter(
-        (_, i) => i !== index
+      URL.revokeObjectURL(
+        imageToRemove.preview
       );
 
-    });
+    }
 
-  };
+    return prev.filter(
+      (_, i) => i !== index
+    );
+
+  });
+
+};
 
   /* THUMBNAIL */
   const makeThumbnail = (index) => {
@@ -454,35 +396,16 @@ error: null,
 
       setSaving(true);
 
-const uploadedImages = [];
-
-const validUploadImages =
-  images.filter(
-    (img) =>
-      img.status !== "failed"
-  );
-
-if (
-  validUploadImages.length === 0
-) {
-
-  showToast(
-    "Aucune image valide."
-  );
-
-  setSaving(false);
-
-  return;
-}
+      const uploadedImages = [];
 
 for (
   let i = 0;
-  i < validUploadImages.length;
+  i < images.length;
   i++
 ) {
 
   const image =
-    validUploadImages[i];
+    images[i];
 
   /*
   EXISTING IMAGE
@@ -494,6 +417,7 @@ for (
     );
 
     continue;
+
   }
 
   setCurrentUploadIndex(
@@ -501,17 +425,6 @@ for (
   );
 
   try {
-
-    setImages((prev) =>
-  prev.map((img) =>
-    img.id === image.id
-      ? {
-          ...img,
-          status: "uploading",
-        }
-      : img
-  )
-);
 
     const url =
       await uploadToCloudinary(
@@ -524,7 +437,7 @@ for (
                 i +
                 percent / 100
               ) /
-              validUploadImages.length
+              images.length
             ) * 100;
 
           setUploadProgress(
@@ -546,34 +459,29 @@ for (
       webpUrl
     );
 
-    setImages((prev) =>
-  prev.map((img) =>
-    img.id === image.id
-      ? {
-          ...img,
-          status: "uploaded",
-        }
-      : img
-  )
-);
-
   } catch (error) {
 
-    console.log(error);
-
-    setImages((prev) =>
-      prev.map((img) =>
-        img.id === image.id
-          ? {
-              ...img,
-              status: "failed",
-
-error: "Échec upload",
-            }
-          : img
-      )
+    console.log(
+      "IMAGE UPLOAD ERROR:",
+      error
     );
+
   }
+
+}
+
+if (
+  uploadedImages.length === 0
+) {
+
+  showToast(
+    "Impossible d'envoyer les images."
+  );
+
+  setSaving(false);
+
+  return;
+
 }
 
       /* UPDATE PRODUCT */
@@ -676,194 +584,67 @@ error: "Échec upload",
 
           <div className="images-grid">
 
-            {images.map(
-              (img, index) => (
-                <div
-  key={img.id}
-  className={`image-card ${
-    img.status === "failed"
-      ? "image-card-failed"
-      : ""
-  } ${
-    img.status === "uploaded"
-      ? "uploaded"
-      : ""
-  }`}
->
+              {images.map(
+  (img, index) => (
 
-  {/* LOADING */}
-  {(img.status === "loading" ||
-    img.status === "uploading") && (
-
-    <div className="image-loading">
-
-      <div className="image-loading-spinner"></div>
-
-    </div>
-
-  )}
-
-  {/* IMAGE */}
-  <img
-    src={img.preview}
-    alt="Produit"
-    loading="lazy"
-    className="preview-image"
-
-    onLoad={() => {
-
-      setImages((prev) =>
-        prev.map((image) =>
-          image.id === img.id
-            ? {
-                ...image,
-
-                status:
-                  image.status === "uploading"
-                    ? "uploading"
-                    : "ready",
-              }
-            : image
-        )
-      );
-
-    }}
-
-    onError={(e) => {
-
-      if (img.retrying) {
-        return;
-      }
-
-      setImages((prev) =>
-        prev.map((image) =>
-          image.id === img.id
-            ? {
-                ...image,
-                retrying: true,
-              }
-            : image
-        )
-      );
-
-      /*
-      MOBILE RETRY
-      */
-      setTimeout(() => {
-
-        e.target.src =
-          img.preview +
-          "#" +
-          Date.now();
-
-        setTimeout(() => {
-
-          setImages((prev) =>
-            prev.map((image) =>
-              image.id === img.id
-                ? {
-                    ...image,
-
-                    retrying: false,
-
-                    status:
-                      image.status === "ready"
-                        ? "ready"
-                        : "failed",
-
-                    error:
-                      image.status === "ready"
-                        ? null
-                        : "Image incompatible",
-                  }
-                : image
-            )
-          );
-
-        }, 1200);
-
-      }, 500);
-
-    }}
-  />
-
-  {/* FAILED */}
-  {img.status === "failed" && (
-
-    <div className="image-error-overlay">
-
-      <FiAlertCircle />
-
-      <p>
-        Image incompatible
-      </p>
-
-      <small>
-        Essayez une autre photo
-      </small>
-
-      <button
-        type="button"
-        onClick={() =>
-          removeImage(index)
-        }
-      >
-
-        Supprimer
-
-      </button>
-
-    </div>
-
-  )}
-
-  {/* THUMBNAIL */}
-  {index === 0 && (
-
-    <span className="thumbnail-badge">
-
-      Miniature
-
-    </span>
-
-  )}
-
-  {/* ACTIONS */}
-  <div className="image-overlay">
-
-    {index !== 0 && (
-
-      <button
-        type="button"
-        onClick={() =>
-          makeThumbnail(index)
-        }
-        className="image-action"
-      >
-
-        <FiStar />
-
-      </button>
-
-    )}
-
-    <button
-      type="button"
-      onClick={() =>
-        removeImage(index)
-      }
-      className="image-action delete"
+    <div
+      key={img.id}
+      className="image-card"
     >
 
-      <FiX />
+      <img
+        src={img.preview}
+        alt="Produit"
+        loading="lazy"
+        className="preview-image"
+      />
 
-    </button>
+      {index === 0 && (
 
-  </div>
+        <span className="thumbnail-badge">
 
-</div>
-              )
-            )}
+          Miniature
+
+        </span>
+
+      )}
+
+      <div className="image-overlay">
+
+        {index !== 0 && (
+
+          <button
+            type="button"
+            onClick={() =>
+              makeThumbnail(index)
+            }
+            className="image-action"
+          >
+
+            <FiStar />
+
+          </button>
+
+        )}
+
+        <button
+          type="button"
+          onClick={() =>
+            removeImage(index)
+          }
+          className="image-action delete"
+        >
+
+          <FiX />
+
+        </button>
+
+      </div>
+
+    </div>
+
+  )
+)}
 
             {/* UPLOAD */}
             {images.length < 10 && (
@@ -883,7 +664,6 @@ error: "Échec upload",
                 <input
                   type="file"
                   accept="image/*"
-                  capture={false}
                   multiple
                   hidden
                   onChange={(e) => {

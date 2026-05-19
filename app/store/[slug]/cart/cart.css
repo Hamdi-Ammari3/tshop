@@ -16,39 +16,36 @@
 .cart-top {
   max-width: 1400px;
   margin: 0 auto 30px;
+  padding: 0px 20px 0px;
   display: flex;
   flex-direction: column;
   gap: 0px;
 }
 
 .cart-top h1 {
-  font-size: 34px;
+  font-size: 25px;
   font-weight: 800;
-
   color: #111827;
-
   margin: 0;
 }
 
 .cart-top p {
   margin-top: 8px;
-
   color: #6b7280;
+  font-size: 15px;
 }
 
 /* BACK */
 .back-store-btn {
   width: fit-content;
-
   display: flex;
   align-items: center;
   gap: 10px;
-
   text-decoration: none;
-
-  color: #111827;
-
+  color: #6b7280;
   font-weight: 600;
+  font-size: 14px;
+  margin: 0px 0px 10px;
 }
 
 /* LAYOUT */
@@ -378,10 +375,8 @@
 /* TOTAL */
 .summary-total h2 {
   margin: 0;
-
-  font-size: 32px;
+  font-size: 30px;
   font-weight: 800;
-
   color: #111827;
 }
 
@@ -529,21 +524,20 @@
     aspect-ratio: 1 / 1;
   }
 
-  .cart-price-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .cart-item-total {
     margin-top: 20px;
   }
 
   .cart-top h1 {
-    font-size: 26px;
+    font-size: 24px;
+  }
+
+  .cart-top p {
+    font-size: 14px;
   }
 
   .summary-total h2 {
-    font-size: 26px;
+    font-size: 22px;
   }
   .summary-card {
   position: static;

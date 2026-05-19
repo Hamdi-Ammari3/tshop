@@ -1,6 +1,6 @@
 "use client";
 import {createContext,useContext,useEffect,useMemo,useState} from "react";
-import {collection,getDocs,query,where,doc,getDoc} from "firebase/firestore";
+import {collection,getDocs,query,where,doc,getDoc,orderBy} from "firebase/firestore";
 import { DB } from "../lib/firebaseConfig";
 const PublicStoreContext = createContext();
 
@@ -40,7 +40,8 @@ export function PublicStoreProvider({slug,children}) {
         /* PRODUCTS */
         const productsQuery = query(
           collection(DB, "products"),
-          where("storeId","==",storeData.id)
+          where("storeId","==",storeData.id),
+          orderBy("createdAt", "desc"),
         );
 
         const productsSnapshot = await getDocs(productsQuery);

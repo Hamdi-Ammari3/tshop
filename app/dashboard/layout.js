@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { DashboardProvider } from "../../context/DashboardContext";
 import { logoutUser } from "../../lib/auth";
-import {FiGrid,FiBox,FiPlusSquare,FiShoppingBag,FiSettings,FiExternalLink,FiMenu,FiX,FiShoppingCart,FiLogOut} from "react-icons/fi";
+import {FiLoader,FiGrid,FiBox,FiPlusSquare,FiShoppingBag,FiSettings,FiExternalLink,FiMenu,FiX,FiShoppingCart,FiLogOut} from "react-icons/fi";
 import { ClipLoader } from "react-spinners";
 import logo from "../../public/website-logo.png"
 import "./dashboard.css";
@@ -73,10 +73,7 @@ export default function DashboardLayout({ children }) {
   if (authLoading || !user) {
     return (
       <div className="dashboard-loading">
-        <ClipLoader
-          color="#006de2"
-          size={50}
-        />
+        <FiLoader className="spin-icon" />
       </div>
     );
   }

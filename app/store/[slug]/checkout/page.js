@@ -268,9 +268,7 @@ export default function CheckoutPage() {
 
       setTimeout(() => {
 
-        router.push(
-          `/store/${store.slug}`
-        );
+        router.push(`/store/${store.slug}`);
 
       }, 2200);
 
@@ -356,6 +354,7 @@ export default function CheckoutPage() {
 
         <Link
           href="/cart"
+          //href="http://localhost:3000/store/store-one/cart"
           className="checkout-back"
         >
 

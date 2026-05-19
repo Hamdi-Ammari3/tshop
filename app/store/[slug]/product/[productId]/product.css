@@ -67,14 +67,10 @@
 /* MAIN IMAGE */
 .product-main-image {
   position: relative;
-
   width: 100%;
   aspect-ratio: 1 / 1;
-
   border-radius: 28px;
-
   overflow: hidden;
-
   background: #f3f4f6;
   transition: transform 0.25s ease;
 }
@@ -83,10 +79,6 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.product-main-image:hover {
-  transform: scale(1.01);
 }
 
 /* THUMBNAILS */
@@ -98,23 +90,20 @@
 
 .thumbnail-btn {
   position: relative;
-
   width: 90px;
   height: 90px;
-
+  padding: 0px;
   border: 2px solid transparent;
   border-radius: 18px;
-
   overflow: hidden;
-
   background: #f3f4f6;
-
   cursor: pointer;
-
   transition: 0.2s;
 }
 
 .thumbnail-image {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -124,37 +113,42 @@
 
 .gallery-arrow {
   position: absolute;
-
   top: 50%;
-
   transform: translateY(-50%);
-
   width: 42px;
   height: 42px;
-
   border: none;
   border-radius: 999px;
-
   background: rgba(255,255,255,0.92);
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   cursor: pointer;
-
   z-index: 5;
-
-  box-shadow:
-    0 6px 20px rgba(0,0,0,0.12);
-
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
   transition: 0.2s;
 }
 
-.gallery-arrow:hover {
-  transform:
-    translateY(-50%)
-    scale(1.06);
+@media (hover: hover) and (pointer: fine) {
+  .product-main-image:hover {
+    transform: scale(1.01);
+  }
+  .gallery-arrow:hover {
+    transform: translateY(-50%) scale(1.06);
+  }
+  .quantity-box button:hover {
+    background: #111827;
+    color: white;
+  }
+  .add-cart-btn:hover {
+    background: #e5e7eb;
+  }
+  .buy-now-btn:hover {
+    transform: translateY(-2px);
+  }
+  .product-whatsapp-btn:hover {
+    transform: translateY(-2px);
+  }
 }
 
 .gallery-arrow svg {
@@ -200,7 +194,7 @@
 
 /* TITLE */
 .product-details h1 {
-  margin: 20px 0px 0px;
+  margin: 10px 0px 0px;
   font-size: 36px;
   font-weight: 800;
   color: #111827;
@@ -208,7 +202,7 @@
 }
 
 .product-description {
-  margin-top: 18px;
+  margin: 0px 0px 0px;
 
   color: #6b7280;
 
@@ -278,7 +272,7 @@
 
 /* PRICE */
 .product-price-box {
-  margin-top: 30px;
+  margin-top: 20px;
 }
 
 .product-price {
@@ -307,12 +301,14 @@
 
 /* QUANTITY */
 .quantity-section {
-  margin-top: 34px;
+  margin-top: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .quantity-section label {
   display: block;
-  margin-bottom: 14px;
   font-size: 16px;
   font-weight: 700;
   color: #111827;
@@ -357,11 +353,6 @@
   cursor: not-allowed;
 }
 
-.quantity-box button:hover {
-  background: #111827;
-  color: white;
-}
-
 .quantity-box span {
   min-width: 60px;
 
@@ -375,7 +366,7 @@
 
 /* TOTAL */
 .total-box {
-  margin-top: 34px;
+  margin-top: 25px;
 
   padding: 24px;
 
@@ -427,10 +418,6 @@
   color: #111827;
 }
 
-.add-cart-btn:hover {
-  background: #e5e7eb;
-}
-
 .buy-now-btn {
   background:
     linear-gradient(
@@ -440,10 +427,6 @@
     );
 
   color: white;
-}
-
-.buy-now-btn:hover {
-  transform: translateY(-2px);
 }
 
 /* WHATSAPP */
@@ -471,10 +454,6 @@
   font-weight: 700;
 
   transition: 0.2s;
-}
-
-.product-whatsapp-btn:hover {
-  transform: translateY(-2px);
 }
 
 /* RESPONSIVE */
@@ -541,5 +520,19 @@
 
   .product-price span {
     font-size: 26px;
+  }
+  .gallery-arrow {
+    width: 35px;
+    height: 35px;
+  }
+  .gallery-arrow svg {
+    font-size: 20px;
+  }
+  .left-arrow {
+    left: 10px;
+  }
+
+  .right-arrow {
+    right: 10px;
   }
 }
