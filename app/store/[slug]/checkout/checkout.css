@@ -196,7 +196,7 @@
 }
 
 .checkout-top p {
-  margin: 0px;
+  margin: 10px 0px 0px;
   color: #6b7280;
   font-size: 15px;
 }
@@ -413,6 +413,10 @@
   font-size: 14px;
 }
 
+.summary-item strong {
+  font-size: 15px;
+}
+
 /* DIVIDER */
 .summary-divider {
   height: 1px;
@@ -436,9 +440,18 @@
 
 .summary-row span {
   color: #6b7280;
+  font-size: 15px;
+}
+.summary-row strong {
+  color: #000;
+  font-size: 15px;
 }
 
 /* TOTAL */
+.summary-total span {
+  font-size: 15px;
+}
+
 .summary-total h2 {
   margin: 0;
   font-size: 30px;
@@ -588,7 +601,7 @@
 }
 
   .checkout-top h1 {
-    font-size: 24px;
+    font-size: 20px;
   }
   .checkout-top p {
     font-size: 14px;
