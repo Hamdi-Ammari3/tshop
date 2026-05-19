@@ -318,6 +318,7 @@ export default function CartPage() {
             {/* CHECKOUT */}
             <Link
               href="/checkout"
+              //href="http://localhost:3000/store/hamdi-store/checkout"
               className="checkout-btn"
             >
 

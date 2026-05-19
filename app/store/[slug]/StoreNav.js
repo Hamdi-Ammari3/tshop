@@ -119,6 +119,7 @@ export default function StoreShell({children}) {
 
           <Link
             href="/cart"
+            //href="http://localhost:3000/store/hamdi-store/cart"
             className="store-cart-btn"
           >
 

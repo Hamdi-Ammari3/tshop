@@ -76,13 +76,8 @@ export default function ProductsPage() {
 
     }
 
-    /*
-    DELETE CLOUDINARY IMAGES
-    */
-    if (
-      product.images &&
-      product.images.length > 0
-    ) {
+    //DELETE CLOUDINARY IMAGES
+    if (product.images &&product.images.length > 0) {
 
       const response =
         await fetch(

@@ -268,7 +268,7 @@ export default function CheckoutPage() {
 
       setTimeout(() => {
 
-        router.push(`/store/${store.slug}`);
+        router.push(`/`);
 
       }, 2200);
 
@@ -288,11 +288,7 @@ export default function CheckoutPage() {
   }
 
   /* EMPTY */
-  if (
-    cart.length === 0 &&
-    !success
-  ) {
-
+  if (cart.length === 0 && !success) {
     return (
       <div className="checkout-empty">
 
@@ -546,7 +542,6 @@ export default function CheckoutPage() {
         <div className="checkout-summary">
 
           <div className="checkout-summary-card">
-
             <h3>
               Résumé de la commande
             </h3>

@@ -181,43 +181,37 @@
 /* TOP */
 .checkout-top {
   max-width: 1400px;
-
   margin: auto auto 30px;
-
+  padding: 0px 20px 0px;
   display: flex;
   flex-direction: column;
-
-  gap: 18px;
+  gap: 0px;
 }
 
 .checkout-top h1 {
   margin: 0;
-
-  font-size: 34px;
+  font-size: 25px;
   font-weight: 800;
-
   color: #111827;
 }
 
 .checkout-top p {
-  margin-top: 8px;
-
+  margin: 0px;
   color: #6b7280;
+  font-size: 15px;
 }
 
 /* BACK */
 .checkout-back {
   width: fit-content;
-
   display: flex;
   align-items: center;
   gap: 10px;
-
   text-decoration: none;
-
-  color: #111827;
-
+  color: #6b7280;
   font-weight: 600;
+  font-size: 14px;
+  margin: 0px 0px 10px;
 }
 
 /* LAYOUT */
@@ -249,28 +243,17 @@
 .checkout-card,
 .checkout-summary-card {
   background: white;
-
-  border-radius: 30px;
-
-  padding: 30px;
-
-  border:
-    1px solid #f1f5f9;
-
-  box-shadow:
-    0 10px 30px
-    rgba(0,0,0,0.04);
+  border-radius: 28px;
+  padding: 20px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
 }
 
 .checkout-card h3,
 .checkout-summary-card h3 {
-  margin-top: 0;
-
-  margin-bottom: 26px;
-
+  margin: 0px 0px 20px;
   font-size: 24px;
   font-weight: 700;
-
   color: #111827;
 }
 
@@ -405,41 +388,28 @@
 .summary-items {
   display: flex;
   flex-direction: column;
-
   gap: 16px;
 }
 
 .summary-item {
   display: flex;
   justify-content: space-between;
-
+  align-items: center;
   gap: 16px;
-
-  padding-bottom: 16px;
-
-  border-bottom:
-    1px solid #f3f4f6;
-}
-
-.summary-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
+  padding-bottom: 0px;
+  border-bottom: 1px solid #f3f4f6;
 }
 
 .summary-item h4 {
   margin: 0;
-
   font-size: 15px;
   font-weight: 600;
-
   color: #111827;
 }
 
 .summary-item p {
-  margin-top: 4px;
-
+  margin: 4px 0px 0px;
   color: #6b7280;
-
   font-size: 14px;
 }
 
@@ -473,36 +443,27 @@
   margin: 0;
   font-size: 30px;
   font-weight: 800;
-
   color: #111827;
 }
 
 /* SUCCESS */
 .checkout-success-page {
-  min-height: 100vh;
-
+  min-height: 80vh;
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 20px;
 }
 
 .checkout-success-card {
   width: 100%;
   max-width: 520px;
-
   background: white;
-
   border-radius: 36px;
-
-  padding: 60px 34px;
-
+  padding: 34px;
   text-align: center;
-
   border:
     1px solid #f1f5f9;
-
   box-shadow:
     0 18px 50px
     rgba(0,0,0,0.06);
@@ -530,26 +491,23 @@
 }
 
 .checkout-success-card h1 {
-  margin-top: 24px;
-
-  font-size: 34px;
+  margin: 20px 0px 0px;
+  font-size: 30px;
   font-weight: 800;
-
   color: #111827;
 }
 
 .checkout-success-card p {
-  margin-top: 12px;
-
+  margin: 10px 0px 0px;
   color: #6b7280;
-
   line-height: 1.7;
+  font-size: 15px;
 }
 
 .checkout-success-card span {
   display: block;
 
-  margin-top: 24px;
+  margin-top: 15px;
 
   color: #9ca3af;
 
@@ -558,40 +516,36 @@
 
 /* EMPTY */
 .checkout-empty {
-  min-height: 100vh;
-
+  min-height: 80vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   text-align: center;
-
   background:
     linear-gradient(
       to bottom,
       #f8fafc,
       #ffffff
     );
-
   padding: 20px;
 }
 
 .checkout-empty h1 {
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 800;
-
   color: #111827;
+  margin: 0px;
 }
 
 .checkout-empty p {
-  margin-top: 12px;
-
+  margin: 10px 0px 0px;
   color: #6b7280;
+  font-size: 15px;
 }
 
 .checkout-back-btn {
-  margin-top: 28px;
+  margin-top: 20px;
 
   padding: 14px 24px;
 
@@ -634,7 +588,14 @@
 }
 
   .checkout-top h1 {
-    font-size: 28px;
+    font-size: 24px;
+  }
+  .checkout-top p {
+    font-size: 14px;
+  }
+  .checkout-card h3,
+  .checkout-summary-card h3 {
+    font-size: 20px;
   }
 
   .double-grid {
@@ -642,16 +603,35 @@
     gap: 0px;
   }
 
-  .checkout-card,
-  .checkout-summary-card {
-    padding: 22px;
-  }
-
   .summary-total h2 {
-    font-size: 26px;
+    font-size: 20px;
   }
-
+  .checkout-success-page {
+    min-height: 60vh;
+  }
+  .success-icon {
+    width: 50px;
+    height: 50px;
+  }
+  .success-icon svg {
+    font-size: 25px;
+  }
   .checkout-success-card h1 {
-    font-size: 28px;
+    font-size: 20px;
   }
+  .checkout-success-card p {
+    font-size: 14px;
+  }
+  /* EMPTY */
+.checkout-empty {
+  min-height: 60vh;
+}
+
+.checkout-empty h1 {
+  font-size: 20px;
+}
+
+.checkout-empty p {
+  font-size: 14px;
+}
 }

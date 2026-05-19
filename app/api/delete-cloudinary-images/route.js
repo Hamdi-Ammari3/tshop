@@ -11,8 +11,7 @@ function extractPublicId(url) {
 
   try {
 
-    const afterUpload =
-      url.split("/upload/")[1];
+    const afterUpload = url.split("/upload/")[1];
 
     if (!afterUpload) {
       return null;
