@@ -1,35 +1,14 @@
 "use client";
 
 import Link from "next/link";
-
 import Image from "next/image";
-
-import {
-  FiMinus,
-  FiPlus,
-  FiTrash2,
-  FiArrowLeft,
-  FiShoppingBag,
-  FiShield,
-  FiTruck,
-} from "react-icons/fi";
-
-import { usePublicStore }
-from "../../../../context/PublicStoreContext";
-
+import {FiMinus,FiPlus,FiTrash2,FiArrowLeft,FiShoppingBag,FiShield,FiTruck} from "react-icons/fi";
+import { usePublicStore } from "../../../../context/PublicStoreContext";
 import "./cart.css";
 
 export default function CartPage() {
 
-  const {
-    store,
-    cart,
-    cartSubtotal,
-    shippingFee,
-    cartTotal,
-    updateCartQuantity,
-    removeFromCart,
-  } = usePublicStore();
+  const {store,cart,cartSubtotal,shippingFee,cartTotal,updateCartQuantity,removeFromCart} = usePublicStore();
 
   /* EMPTY */
   if (cart.length === 0) {
@@ -53,6 +32,7 @@ export default function CartPage() {
 
           <Link
             href="/"
+            //href="/store/hamdi-store"
             className="continue-shopping-btn"
           >
 
@@ -74,6 +54,7 @@ export default function CartPage() {
 
         <Link
           href="/"
+          //href="/store/hamdi-store"
           className="back-store-btn"
         >
 
@@ -89,13 +70,7 @@ export default function CartPage() {
             Panier
           </h1>
 
-          <p>
-            {cart.length} produit
-            {cart.length > 1
-              ? "s"
-              : ""}{" "}
-            dans votre panier
-          </p>
+          <p>{cart.length} produit{cart.length > 1? "s": ""}{" "} dans votre panier</p>
 
         </div>
 
@@ -109,12 +84,13 @@ export default function CartPage() {
 
           {cart.map((item) => {
 
-            const unitPrice =
-              Number(item.price);
+            const unitPrice = Number(item.finalPrice || 0);
 
-            const total =
-              unitPrice *
-              item.quantity;
+            const total = item.selectedLot ? Number(item.finalPrice || 0) : Number(item.finalPrice || 0) * item.quantity;
+
+            const activeInventory = item.selectedVariant?.inventory ?? item.inventory;
+
+            const maxQuantity = item.trackInventory ? Number(activeInventory || 0) : Infinity;
 
             return (
               <div
@@ -125,11 +101,13 @@ export default function CartPage() {
                 {/* IMAGE */}
                 <Link
                   href={`/product/${item.id}`}
+                  //href={`/store/${store.slug}/product/${item.id}`}
                   className="cart-item-image"
                 >
 
                   <Image
                     src={
+                      item.selectedVariant?.image ||
                       item.images?.[0] ||
                       "/placeholder.png"
                     }
@@ -156,15 +134,77 @@ export default function CartPage() {
                           "Produit"}
                       </p>
 
+                      {/* VARIANTS */}
+                      {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+
+                        <div className="cart-variants-list">
+
+                          {Object.entries(item.selectedOptions).map(([key, value]) => (
+
+                            <div
+                              key={key}
+                              className="cart-variant-item"
+                            >
+
+                              <span>
+                                {key}
+                              </span>
+
+                              <strong>
+                                {value}
+                              </strong>
+
+                            </div>
+
+                          ))}
+
+                        </div>
+
+                      )}
+
+                      {/* LOT */}
+                      {item.selectedLot && (
+
+                        <div className="cart-lot-badge">
+
+                          Lot de{" "}{item.selectedLot.quantity} pièces
+
+                        </div>
+
+                      )}
+
+                      {/* STOCK */}
+                      {item.trackInventory && (
+
+                        <div className="cart-stock-info">
+
+                          {activeInventory > 0 ? (
+
+                            <span className="cart-stock-available">
+
+                              {activeInventory} disponible{activeInventory > 1 ? "s" : ""}
+
+                            </span>
+
+                          ) : (
+
+                            <span className="cart-stock-empty">
+
+                              Rupture de stock
+
+                            </span>
+
+                          )}
+
+                        </div>
+
+                      )}
+
                     </div>
 
                     <button
                       className="remove-cart-btn"
-                      onClick={() =>
-                        removeFromCart(
-                          item.id
-                        )
-                      }
+                      onClick={() => removeFromCart(item.cartItemId)}
                     >
 
                       <FiTrash2 />
@@ -179,13 +219,29 @@ export default function CartPage() {
                     <div className="cart-unit-price">
 
                       <span>
-                        {item.price} TND
+
+                        {item.selectedLot ? `${item.finalPrice} TND` : `${item.finalPrice} TND`}
+
                       </span>
 
-                      {item.hasDiscount && (
+                      {!item.selectedLot && item.selectedVariant?.oldPrice && (
+
                         <small>
-                          {item.oldPrice} TND
+
+                          {item.selectedVariant.oldPrice} TND
+
                         </small>
+
+                      )}
+
+                      {!item.selectedLot && !item.selectedVariant && item.oldPrice && (
+
+                        <small>
+
+                          {item.oldPrice} TND
+
+                        </small>
+
                       )}
 
                     </div>
@@ -194,15 +250,8 @@ export default function CartPage() {
                     <div className="cart-quantity-box">
 
                       <button
-                        onClick={() =>
-                          updateCartQuantity(
-                            item.id,
-                            item.quantity - 1
-                          )
-                        }
-                        disabled={
-                          item.quantity === 1
-                        }
+                        onClick={() => updateCartQuantity(item.cartItemId,item.quantity - 1)}
+                        disabled={item.quantity === 1 || item.selectedLot}
                       >
 
                         <FiMinus />
@@ -214,12 +263,8 @@ export default function CartPage() {
                       </span>
 
                       <button
-                        onClick={() =>
-                          updateCartQuantity(
-                            item.id,
-                            item.quantity + 1
-                          )
-                        }
+                        onClick={() => updateCartQuantity(item.cartItemId,item.quantity + 1)}
+                        disabled={item.selectedLot || (item.trackInventory && item.quantity >= maxQuantity)}
                       >
 
                         <FiPlus />
@@ -322,7 +367,7 @@ export default function CartPage() {
               className="checkout-btn"
             >
 
-              Passer à la commande
+              Passer à la caisse
 
             </Link>
 

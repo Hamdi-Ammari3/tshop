@@ -1,111 +1,39 @@
 "use client";
 
-import {
-  useMemo,
-  useState,
-} from "react";
-
+import {useMemo,useState} from "react";
 import Link from "next/link";
-
-import {
-  useRouter,
-} from "next/navigation";
-
-import {
-  addDoc,
-  collection,
-} from "firebase/firestore";
-
-import {
-  DB,
-} from "../../../../lib/firebaseConfig";
-
-import {
-  usePublicStore,
-} from "../../../../context/PublicStoreContext";
-
-import {
-  FiArrowLeft,
-  FiCheck,
-  FiLoader,
-  FiX,
-  FiAlertCircle,
-  FiTruck,
-  FiShield,
-} from "react-icons/fi";
-
+import {useRouter} from "next/navigation";
+import {addDoc,collection} from "firebase/firestore";
+import {DB} from "../../../../lib/firebaseConfig";
+import {usePublicStore} from "../../../../context/PublicStoreContext";
+import {FiArrowLeft,FiCheck,FiLoader,FiX,FiAlertCircle,FiTruck,FiShield} from "react-icons/fi";
 import "./checkout.css";
 
 export default function CheckoutPage() {
 
   const router = useRouter();
 
-  const {
-    store,
-    cart,
-    cartSubtotal,
-    shippingFee,
-    cartTotal,
-    clearCart,
-  } = usePublicStore();
+  const {store,cart,cartSubtotal,shippingFee,cartTotal,clearCart,} = usePublicStore();
 
-  const [
-    clientName,
-    setClientName,
-  ] = useState("");
-
-  const [
-    clientPhone,
-    setClientPhone,
-  ] = useState("");
-
-  const [
-    clientAddress,
-    setClientAddress,
-  ] = useState("");
-
-  const [
-    notes,
-    setNotes,
-  ] = useState("");
-
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    success,
-    setSuccess,
-  ] = useState(false);
-
-  const [
-    toast,
-    setToast,
-  ] = useState(null);
+  const [clientName,setClientName] = useState("");
+  const [clientPhone,setClientPhone] = useState("");
+  const [clientAddress,setClientAddress] = useState("");
+  const [notes,setNotes] = useState("");
+  const [loading,setLoading] = useState(false);
+  const [success,setSuccess] = useState(false);
+  const [toast,setToast] = useState(null);
 
   /* TOTAL ITEMS */
-  const totalItems =
-    useMemo(() => {
+  const totalItems = useMemo(() => {
 
-      return cart.reduce(
-        (acc, item) =>
-          acc + item.quantity,
-        0
-      );
+    return cart.reduce((acc, item) => acc + item.quantity, 0);
 
-    }, [cart]);
+  }, [cart]);
 
   /* TOAST */
-  const showToast = (
-    message,
-    type = "error"
-  ) => {
+  const showToast = (message,type = "error") => {
 
-    setToast({
-      message,
-      type,
-    });
+    setToast({message,type});
 
     setTimeout(() => {
       setToast(null);
@@ -120,61 +48,38 @@ export default function CheckoutPage() {
     if (loading) return;
 
     /* NAME */
-    if (
-      !clientName.trim()
-    ) {
+    if (!clientName.trim()) {
 
-      showToast(
-        "Veuillez saisir votre nom complet"
-      );
+      showToast("Veuillez saisir votre nom complet");
 
       return;
     }
 
     /* PHONE */
-    if (
-      !clientPhone.trim()
-    ) {
+    if (!clientPhone.trim()) {
 
-      showToast(
-        "Veuillez saisir votre numéro"
-      );
+      showToast("Veuillez saisir votre numéro");
 
       return;
     }
 
     /* CLEAN */
-    const cleanPhone =
-      clientPhone.replace(
-        /\s/g,
-        ""
-      );
+    const cleanPhone = clientPhone.replace(/\s/g,"");
 
     /* TUNISIA */
-    const tunisianPhoneRegex =
-      /^[259]\d{7}$/;
+    const tunisianPhoneRegex = /^[259]\d{7}$/;
 
-    if (
-      !tunisianPhoneRegex.test(
-        cleanPhone
-      )
-    ) {
+    if (!tunisianPhoneRegex.test(cleanPhone)) {
 
-      showToast(
-        "Le numéro doit contenir 8 chiffres et commencer par 2, 5 ou 9"
-      );
+      showToast("Le numéro doit contenir 8 chiffres et commencer par 2, 5 ou 9");
 
       return;
     }
 
     /* ADDRESS */
-    if (
-      !clientAddress.trim()
-    ) {
+    if (!clientAddress.trim()) {
 
-      showToast(
-        "Veuillez saisir votre adresse"
-      );
+      showToast("Veuillez saisir votre adresse");
 
       return;
     }
@@ -184,83 +89,78 @@ export default function CheckoutPage() {
       setLoading(true);
 
       /* ITEMS */
-      const orderItems =
-        cart.map((item) => {
+      const orderItems = cart.map((item) => {
 
-          const unitPrice =
-            Number(item.price);
+        const unitPrice = Number(item.finalPrice || 0);
 
-          return {
-            productId: item.id,
-            productName:
-              item.name,
-            productImage:
-              item.images?.[0] ||
-              "",
-            quantity:
-              item.quantity,
-            unitPrice,
-            total:
-              unitPrice *
-              item.quantity,
-            shipping_fee:
-              Number(
-                item.shipping_fee || 0
-              ),
-          };
-        });
+        const total = item.selectedLot ? unitPrice : unitPrice * item.quantity;
+
+        return {
+
+          productId: item.id,
+
+          productName: item.name,
+
+          productImage: item.selectedVariant ?.image || item.images?.[0] || "",
+
+          category: item.category || "",
+
+          quantity: item.quantity,
+
+          selectedOptions: item.selectedOptions || {},
+
+          selectedVariant: item.selectedVariant ? {
+            id: item.selectedVariant.id || null,
+
+            image: item.selectedVariant.image || "",
+
+            inventory: item.selectedVariant.inventory ?? null,
+          } : null,
+
+          selectedLot: item.selectedLot || null,
+
+          unitPrice,
+
+          total,
+
+          oldPrice: item.selectedVariant ?.oldPrice || item.oldPrice || null,
+
+          trackInventory: item.trackInventory || false,
+
+          shipping_fee: Number( item.shipping_fee || 0 )
+        }
+      });
 
       /* ORDER */
-      await addDoc(
-        collection(
-          DB,
-          "orders"
-        ),
-        {
-          storeId:
-            store.id,
-          storeName:
-            store.name,
-          storeSlug:
-            store.slug,
+      await addDoc(collection(DB,"orders"),{
+        storeId: store.id,
 
-          items:
-            orderItems,
+        storeName: store.name,
 
-          itemsCount:
-            totalItems,
+        storeSlug: store.slug,
 
-          subtotal:
-            cartSubtotal,
+        items: orderItems,
 
-          shipping_fee:
-            shippingFee,
+        itemsCount: totalItems,
 
-          total_amount:
-            cartTotal,
+        subtotal: cartSubtotal,
 
-          clientName:
-            clientName.trim(),
+        shipping_fee: shippingFee,
 
-          clientPhone:
-            cleanPhone,
+        total_amount: cartTotal,
 
-          clientAddress:
-            clientAddress.trim(),
+        clientName: clientName.trim(),
 
-          notes:
-            notes.trim(),
+        clientPhone: cleanPhone,
 
-          payment_method:
-            "cash_on_delivery",
+        clientAddress: clientAddress.trim(),
 
-          status:
-            "pending",
+        payment_method: "cash_on_delivery",
 
-          createdAt:
-            new Date().toISOString(),
-        }
-      );
+        status: "pending",
+
+        createdAt: new Date().toISOString(),
+      });
 
       setSuccess(true);
 
@@ -276,9 +176,7 @@ export default function CheckoutPage() {
 
       console.log(error);
 
-      showToast(
-        "Une erreur est survenue"
-      );
+      showToast("Une erreur est survenue");
 
     } finally {
 
@@ -302,6 +200,7 @@ export default function CheckoutPage() {
 
         <Link
           href="/"
+          //href="/store/hamdi-store"
           className="checkout-back-btn"
         >
 
@@ -415,11 +314,7 @@ export default function CheckoutPage() {
                 type="text"
                 placeholder="Votre nom complet"
                 value={clientName}
-                onChange={(e) =>
-                  setClientName(
-                    e.target.value
-                  )
-                }
+                onChange={(e) => setClientName(e.target.value)}
               />
 
             </div>
@@ -437,11 +332,7 @@ export default function CheckoutPage() {
                   type="tel"
                   placeholder="21 234 567"
                   value={clientPhone}
-                  onChange={(e) =>
-                    setClientPhone(
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => setClientPhone(e.target.value)}
                 />
 
               </div>
@@ -456,36 +347,13 @@ export default function CheckoutPage() {
                   type="text"
                   placeholder="Votre adresse"
                   value={clientAddress}
-                  onChange={(e) =>
-                    setClientAddress(
-                      e.target.value
-                    )
-                  }
+                  onChange={(e) => setClientAddress(e.target.value)}
                 />
 
               </div>
 
             </div>
 
-            {/* NOTES */}
-            <div className="form-group">
-
-              <label>
-                Notes (optionnel)
-              </label>
-
-              <textarea
-                rows="5"
-                placeholder="Informations supplémentaires"
-                value={notes}
-                onChange={(e) =>
-                  setNotes(
-                    e.target.value
-                  )
-                }
-              />
-
-            </div>
           </div>
 
           {/* TOAST */}
@@ -507,9 +375,7 @@ export default function CheckoutPage() {
               <button
                 type="button"
                 className="toast-close"
-                onClick={() =>
-                  setToast(null)
-                }
+                onClick={() => setToast(null)}
               >
                 <FiX />
               </button>
@@ -563,20 +429,13 @@ export default function CheckoutPage() {
                     </h4>
 
                     <p>
-                      Quantité :
-                      {" "}
-                      {item.quantity}
+                      Quantité :{" "}{item.quantity}
                     </p>
 
                   </div>
 
                   <strong>
-                    {Number(
-                      item.price
-                    ) *
-                      item.quantity}
-                    {" "}
-                    TND
+                    {item.selectedLot ? Number(item.finalPrice || 0) : Number(item.finalPrice || 0) * item.quantity}{" "} TND
                   </strong>
 
                 </div>

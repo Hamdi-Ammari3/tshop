@@ -396,8 +396,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 16px;
-  padding-bottom: 0px;
-  border-bottom: 1px solid #f3f4f6;
+  padding: 0px;
 }
 
 .summary-item h4 {
@@ -454,7 +453,7 @@
 
 .summary-total h2 {
   margin: 0;
-  font-size: 30px;
+  font-size: 24px;
   font-weight: 800;
   color: #111827;
 }

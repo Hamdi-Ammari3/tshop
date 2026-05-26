@@ -1,23 +1,12 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import {
-  FiCheck,
-  FiX,
-  FiClock,
-  FiRotateCcw,
-  FiMapPin,
-  FiPhone,
-} from "react-icons/fi";
-
-import { updateDoc, doc } from "firebase/firestore";
+import {FiCheck,FiX,FiClock,FiRotateCcw,FiMapPin,FiPhone} from "react-icons/fi";
+import { updateDoc,doc,getDoc } from "firebase/firestore";
 import { DB } from "../../../lib/firebaseConfig";
-
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
-
 import { ClipLoader } from "react-spinners";
-
 import "./orders.css";
 
 export default function OrdersPage() {
@@ -119,8 +108,8 @@ export default function OrdersPage() {
     }
   };
 
-  /* UPDATE STATUS */
-  const setStatus = async (id, status) => {
+  //UPDATE STATUS
+  const setStatusss = async (id, status) => {
     try {
       setActionLoading(id);
 
@@ -138,6 +127,146 @@ export default function OrdersPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const setStatus = async (order,newStatus) => {
+
+    try {
+
+      setActionLoading(order.id);
+
+      //INVENTORY UPDATE
+      if (newStatus === "done" && !order.inventoryUpdated) {
+
+        for (const item of order.items || []) {
+
+          const productRef = doc(DB,"products",item.productId);
+
+          const productSnap = await getDoc(productRef);
+
+          if (!productSnap.exists()) {
+            continue;
+          }
+
+          const productData = productSnap.data();
+
+          //TRACK INVENTORY
+          if (!item.trackInventory) {
+            continue;
+          }
+
+          //VARIANT PRODUCT 
+          if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
+
+            const updatedVariants = (productData.variants ||[]).map((variant) => {
+
+              const sameVariant = variant.options.every((option) => item.selectedOptions[option.name] ===option.value);
+
+              if (!sameVariant) {
+                return variant;
+              }
+
+              return {
+                ...variant,
+
+                inventory: Math.max(0,Number(variant.inventory ||0) -Number(item.quantity ||0)),
+              };
+
+            });
+
+            await updateDoc(productRef,{variants:updatedVariants});
+
+          } else {
+
+            await updateDoc(productRef,{
+              inventory: Math.max(0,Number(productData.inventory ||0) - Number(item.quantity ||0)),
+            });
+          }
+
+        }
+
+        await updateDoc(doc(DB,"orders",order.id), {
+          status: newStatus,
+
+          inventoryUpdated: true,
+        });
+
+      } else if (newStatus === "pending" && order.inventoryUpdated) {
+
+        for (const item of order.items || []) {
+
+          const productRef = doc(DB,"products",item.productId);
+
+          const productSnap = await getDoc(productRef);
+
+          if (!productSnap.exists()) {
+            continue         
+          }
+
+          const productData = productSnap.data();
+
+          if (!item.trackInventory) {
+            continue;
+          }
+
+          /* VARIANT */
+          if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
+
+            const updatedVariants = (productData.variants ||[]).map((variant) => {
+
+              const sameVariant = variant.options.every((option) => item.selectedOptions[option.name] ===option.value);
+
+              if (!sameVariant) {
+                return variant;
+              }
+
+              return {
+                ...variant,
+                inventory: Number(variant.inventory || 0) + Number(item.quantity || 0),
+              };
+
+            });
+
+            await updateDoc(productRef,{
+              variants: updatedVariants,
+            });
+
+          } else {
+
+            await updateDoc(productRef,{
+              inventory: Number(productData.inventory || 0) +Number(item.quantity || 0),
+            });
+
+          }
+
+        }
+
+        await updateDoc(doc(DB,"orders",order.id), {
+          status:newStatus,
+
+          inventoryUpdated:false,
+        });
+
+      } else {
+
+        await updateDoc(doc(DB,"orders",order.id), {
+          status: newStatus,
+        });
+
+      }
+
+    } catch (error) {
+
+      console.log(error);
+
+      alert("Une erreur est survenue.");
+
+    } finally {
+
+      setActionLoading(null);
+
+    }
+
   };
 
   /* LOADING */
@@ -321,28 +450,102 @@ export default function OrdersPage() {
 
                   {o.items?.map((item, index) => (
                     <div
-                      key={
-                        item.productId ||
-                        index
-                      }
-                      className="mobile-order-product"
-                    >
+  key={
+    item.productId ||
+    index
+  }
+  className="mobile-order-product"
+>
 
-                      <span>
-                        •{" "}
-                        {item.productName}
-                        <strong>
-                          {" "}
-                          ×{" "}
-                          {item.quantity}
-                        </strong>
-                      </span>
+  {/* IMAGE */}
+  <div className="order-product-image">
 
-                      <span>
-                        {item.total} TND
-                      </span>
+    <img
+      src={
+        item.selectedVariant
+          ?.image ||
+        item.productImage ||
+        "/placeholder.png"
+      }
+      alt={item.productName}
+    />
 
-                    </div>
+  </div>
+
+  {/* CONTENT */}
+  <div className="order-product-content">
+
+    <div className="order-product-left">
+
+      <span className="order-product-name">
+
+        {item.productName}
+
+        <strong>
+          {" "}
+          × {item.quantity}
+        </strong>
+
+      </span>
+
+      {/* VARIANTS */}
+      {item.selectedOptions &&
+        Object.keys(
+          item.selectedOptions
+        ).length > 0 && (
+
+        <div className="order-variants">
+
+          {Object.entries(
+            item.selectedOptions
+          ).map(
+            ([key, value]) => (
+
+            <div
+              key={key}
+              className="order-variant-item"
+            >
+
+              <span>
+                {key}
+              </span>
+
+              <strong>
+                {value}
+              </strong>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      )}
+
+      {/* LOT */}
+      {item.selectedLot && (
+
+        <div className="order-lot-badge">
+
+          Lot de{" "}
+          {item.selectedLot.quantity}
+          {" "} pièces
+
+        </div>
+
+      )}
+
+    </div>
+
+    <span className="order-product-total">
+
+      {item.total} TND
+
+    </span>
+
+  </div>
+
+</div>
                   ))}
 
                 </div>
@@ -379,16 +582,8 @@ export default function OrdersPage() {
 
                       <button
                         className="done-btn"
-                        disabled={
-                          actionLoading ===
-                          o.id
-                        }
-                        onClick={() =>
-                          setStatus(
-                            o.id,
-                            "done"
-                          )
-                        }
+                        disabled={actionLoading === o.id}
+                        onClick={() => setStatus(o,"done")}
                       >
 
                         {actionLoading ===
@@ -412,12 +607,7 @@ export default function OrdersPage() {
                           actionLoading ===
                           o.id
                         }
-                        onClick={() =>
-                          setStatus(
-                            o.id,
-                            "cancelled"
-                          )
-                        }
+                        onClick={() => setStatus(o,"cancelled")}
                       >
 
                         {actionLoading ===
@@ -443,12 +633,7 @@ export default function OrdersPage() {
                         actionLoading ===
                         o.id
                       }
-                      onClick={() =>
-                        setStatus(
-                          o.id,
-                          "pending"
-                        )
-                      }
+                      onClick={() => setStatus(o,"pending")}
                     >
 
                       {actionLoading ===

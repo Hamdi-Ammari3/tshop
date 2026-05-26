@@ -147,7 +147,7 @@ export default function DashboardLayout({ children }) {
               className="mobile-menu-btn"
               onClick={() => setMenuOpen(true)}
             >
-              <FiMenu />
+              <FiMenu color="#000"/>
             </button>
 
             <Link href="/" className="dashboard-logo">
