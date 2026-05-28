@@ -201,7 +201,7 @@
 .variants-table th {
   padding: 14px 16px;
 
-  text-align: left;
+  text-align: center;
 
   font-size: 11px;
   font-weight: 700;
@@ -214,12 +214,10 @@
 
 .variants-table td {
   padding: 16px;
-
   border-top: 1px solid #edf2f7;
-
   font-size: 14px;
-
   color: #0f172a;
+  text-align: center;
 }
 
 /* THUMB */
@@ -727,18 +725,14 @@
   }
 
   .variants-table th {
-    padding: 12px 10px;
-
+    padding: 12px 5px;
     font-size: 10px;
-
     white-space: nowrap;
   }
 
   .variants-table td {
-    padding: 12px 10px;
-
+    padding: 12px 5px;
     font-size: 12px;
-
     white-space: nowrap;
   }
 

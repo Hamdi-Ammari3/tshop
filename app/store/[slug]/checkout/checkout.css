@@ -252,7 +252,7 @@
 .checkout-card h3,
 .checkout-summary-card h3 {
   margin: 0px 0px 20px;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   color: #111827;
 }
@@ -616,7 +616,7 @@
   }
 
   .summary-total h2 {
-    font-size: 20px;
+    font-size: 17px;
   }
   .checkout-success-page {
     min-height: 60vh;

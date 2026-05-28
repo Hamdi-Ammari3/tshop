@@ -43,7 +43,7 @@ function StockBadge({ qty }) {
 
       {qty === 0
         ? "Rupture"
-        : `${qty} en stock`}
+        : `${qty}`}
 
     </span>
 
@@ -162,7 +162,7 @@ function VariantsTable({ product }) {
                   key={combo.id}
                 >
 
-                  <td>
+                  <td style={{display:'flex',justifyContent:'center'}}>
 
                     <div className="variant-thumb">
 
@@ -199,7 +199,7 @@ function VariantsTable({ product }) {
 
                   <td className="variant-price">
 
-                    {combo.price} TND
+                    {combo.price}
 
                     {combo.oldPrice && (
 

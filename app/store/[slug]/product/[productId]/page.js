@@ -245,8 +245,8 @@ export default function ProductPage() {
         quantity
       );
 
-      //router.push("/checkout");
-      router.push("http://localhost:3000/store/hamdi-store/checkout");
+      router.push("/checkout");
+      //router.push("http://localhost:3000/store/hamdi-store/checkout");
 
     } finally {
       setOrdering(false);

@@ -666,7 +666,6 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-
   gap: 10px;
 }
 
@@ -680,17 +679,14 @@
 
 .store-product-info h3 {
   margin: 0;
-
   font-size: 17px;
   font-weight: 700;
-
   line-height: 1.5;
-
   color: #111827;
 }
 
 .store-product-info p {
-  margin-top: 8px;
+  margin: 8px 0px;
 
   color: #6b7280;
 
@@ -699,18 +695,15 @@
 
 /* PRICE */
 .store-product-price {
-  margin-top: 16px;
-
+  margin: 10px 0px 0px;
   display: flex;
   align-items: center;
-
   gap: 10px;
-
   flex-wrap: wrap;
 }
 
 .store-product-price span {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 900;
 
   color: #111827;
@@ -867,7 +860,7 @@
   }
 
   .store-product-price span {
-    font-size: 17px;
+    font-size: 15px;
   }
 }
 
