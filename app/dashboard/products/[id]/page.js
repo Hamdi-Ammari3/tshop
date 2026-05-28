@@ -397,7 +397,7 @@ export default function EditProductPage() {
 
     };
 
-  }, [variantRows]);
+  }, []);
 
   //Remove image
   const removeImage = (index) => {
@@ -579,8 +579,6 @@ export default function EditProductPage() {
 
       if (index === options.length) {
 
-        //const existingVariant = existingRows.find((row) => JSON.stringify(row.options) === JSON.stringify(currentOptions));
-
         const currentVariantKey = currentOptions.map((o) => o.value).join("-").toLowerCase();
 
         const existingVariant = existingRows.find((row) => row.variantKey === currentVariantKey);
@@ -609,8 +607,10 @@ export default function EditProductPage() {
 
           image: existingVariant?.image ?? "",
 
-          imagePreview: existingVariant?.imagePreview || existingVariant?.image || "",
+          imageFile: existingVariant?.imageFile ?? null,
 
+          imagePreview: existingVariant?.imagePreview || existingVariant?.image || "",
+          
           active: true,
 
         });
@@ -1577,7 +1577,6 @@ export default function EditProductPage() {
 
               )}
 
-
               {/* COMBINAISONS */}
               {variantRows.length > 0 && (
 
@@ -1825,7 +1824,6 @@ export default function EditProductPage() {
                                               />
 
                                             </div>
-
 
                                             {/* DISCOUNT */}
                                             <div className="modern-combo-discount">
@@ -2128,7 +2126,6 @@ export default function EditProductPage() {
                                     />
 
                                   </div>
-
 
                                   {/* STOCK */}
                                   <div className="modern-combo-field">

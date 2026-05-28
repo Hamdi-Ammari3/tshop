@@ -446,6 +446,8 @@ export default function NewProductPage() {
 
           image: existingVariant?.image ?? "",
 
+          imageFile: existingVariant?.imageFile ?? null,
+
           imagePreview: existingVariant?.imagePreview ?? "",
 
           active: true,
@@ -1940,7 +1942,6 @@ export default function NewProductPage() {
                                     />
 
                                   </div>
-
 
                                   {/* STOCK */}
                                   <div className="modern-combo-field">
