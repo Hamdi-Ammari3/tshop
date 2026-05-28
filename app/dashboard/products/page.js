@@ -6,9 +6,8 @@ import {deleteDoc,doc} from "firebase/firestore";
 import {DB} from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
-import { ClipLoader } from "react-spinners";
 import {FiEdit2,FiTrash2,FiPlus,FiChevronDown,FiChevronRight,FiLayers,FiArchive,FiBox,FiImage,FiLoader} from "react-icons/fi";
-import "../dashboard.css";
+import "./products.css";
 
 /* TOTAL STOCK */
 function totalVariantStock(product) {
@@ -365,12 +364,7 @@ function InventoryLine({product}) {
 /* DETAILS */
 function ExpandedDetails({product}) {
 
-  if (
-    !product.variants
-      ?.length &&
-    !product?.lotRules?.lots?.length &&
-    !product.trackInventory
-  ) {
+  if (!product.variants?.length && !product?.lotRules?.lots?.length && !product.trackInventory) {
 
     return (
 
@@ -634,10 +628,7 @@ export default function ProductsPage() {
 
         <div className="dashboard-loading-card">
 
-          <ClipLoader
-            color="#006de2"
-            size={46}
-          />
+          <FiLoader className="spin-icon" />
 
           <h3>
             Chargement des produits...

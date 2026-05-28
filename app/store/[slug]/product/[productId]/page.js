@@ -29,6 +29,7 @@ export default function ProductPage() {
   const [ordering,setOrdering] = useState(false);
   const [selectedOptions,setSelectedOptions] = useState({});
   const [selectedLot,setSelectedLot] = useState(null);
+  const [manualImage,setManualImage] = useState(false);
 
   /* DEFAULT OPTIONS */
   useState(() => {
@@ -75,7 +76,9 @@ export default function ProductPage() {
   });
 
   /* ACTIVE IMAGE */
-  const activeImage = selectedVariant?.image || currentImage;
+  //const activeImage = selectedVariant?.image || currentImage;
+
+  const activeImage = manualImage ? currentImage : (selectedVariant?.image || currentImage);
 
   /* ACTIVE PRICE */
   const activePrice = selectedVariant?.price || product.price;
@@ -153,6 +156,8 @@ export default function ProductPage() {
 
     if (!product?.images?.length) return;
 
+    setManualImage(true);
+
     setSelectedIndex((prev) => prev === product.images.length - 1 ? 0 : prev + 1);
   };
 
@@ -160,6 +165,8 @@ export default function ProductPage() {
   const prevImage = () => {
 
     if (!product?.images?.length) return;
+
+    setManualImage(true);
 
     setSelectedIndex((prev) => prev === 0 ? product.images.length - 1 : prev - 1);
   };
@@ -245,6 +252,10 @@ export default function ProductPage() {
       setOrdering(false);
     }
   };
+
+  const description = product.description || "Aucune description disponible pour ce produit.";
+
+  const isLongDescription = description.length > 180;
 
   /* NOT FOUND */
   if (!product || !store) {
@@ -334,7 +345,13 @@ export default function ProductPage() {
                   <button
                     key={index}
                     className={`thumbnail-btn ${selectedIndex === index ? "active-thumbnail" : ""}`}
-                    onClick={() => setSelectedIndex(index)}
+                    onClick={() => {
+
+                      setManualImage(true);
+
+                      setSelectedIndex(index);
+
+                    }}
                   >
 
                     <img
@@ -360,13 +377,9 @@ export default function ProductPage() {
             {product.category || "Produit"}
           </span>
 
-          <h1>
-            {product.name}
-          </h1>
+          <h1>{product.name}</h1>
 
-          <p className="product-description">
-            {product.description || "Aucune description disponible pour ce produit."}
-          </p>
+          <p>{product.description}</p>
 
           {/* PRICE */}
           <div className="product-price-box">
@@ -451,14 +464,16 @@ export default function ProductPage() {
                           type="button"
                           disabled={isOut}
                           className={`variant-btn ${isActive ? "active-variant" : ""} ${isOut? "disabled-variant": ""}`}
-                          onClick={() =>
-                            setSelectedOptions(
-                              (prev) => ({
-                                ...prev,
-                                [option.name]: value,
-                              })
-                            )
-                          }
+                          onClick={() => {
+
+                            setManualImage(false);
+
+                            setSelectedOptions((prev) => ({
+                              ...prev,
+                              [option.name]: value,
+                            }));
+
+                          }}
                         >
 
                           {value}

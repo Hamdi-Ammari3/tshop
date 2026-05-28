@@ -19,6 +19,7 @@ export default function EditProductPage() {
   const { store } = useStore();
 
   const [pageLoading,setPageLoading] = useState(true);
+  const [productLoaded,setProductLoaded] = useState(false);
   const [name, setName] = useState("");
   const [category, setCategory] = useState(null);
   const [description, setDescription] = useState("");
@@ -121,10 +122,11 @@ export default function EditProductPage() {
       // VARIANTS
       setVariantRows(
 
-        (data.variants || []).map(
-          (variant) => ({
+        (data.variants || []).map((variant) => ({
 
             id: variant.id || crypto.randomUUID(),
+
+            variantKey: variant.variantKey || variant.options?.map((o) => o.value).join("-").toLowerCase(),
 
             options: variant.options || [],
 
@@ -168,6 +170,8 @@ export default function EditProductPage() {
 
       );
 
+      setProductLoaded(true);
+
     } catch (error) {
 
       console.log(error);
@@ -177,7 +181,7 @@ export default function EditProductPage() {
     } finally {
 
       setPageLoading(false);
-      setVariantsInitialized(true);
+
 
     }
 
@@ -575,7 +579,11 @@ export default function EditProductPage() {
 
       if (index === options.length) {
 
-        const existingVariant = existingRows.find((row) => JSON.stringify(row.options) === JSON.stringify(currentOptions));
+        //const existingVariant = existingRows.find((row) => JSON.stringify(row.options) === JSON.stringify(currentOptions));
+
+        const currentVariantKey = currentOptions.map((o) => o.value).join("-").toLowerCase();
+
+        const existingVariant = existingRows.find((row) => row.variantKey === currentVariantKey);
 
         const generalPriceData = buildPriceData({
           hasDiscount,
@@ -587,19 +595,21 @@ export default function EditProductPage() {
 
           id: existingVariant?.id || crypto.randomUUID(),
 
+          variantKey: currentVariantKey,
+
           options: currentOptions,
 
-          inventory: existingVariant?.inventory ?? (combinations.length === 0 ? Number(inventory || 0) : 0),
+          inventory: existingVariant?.inventory ?? 0,
 
-          price: existingVariant ? existingVariant.price : generalPriceData.price,
+          price: existingVariant?.price?.toString?.() || generalPriceData.price?.toString?.() || "",
 
-          oldPrice: existingVariant ? existingVariant.oldPrice : generalPriceData.oldPrice,
+          oldPrice: existingVariant?.oldPrice?.toString?.() || generalPriceData.oldPrice?.toString?.() || "",
 
           hasDiscount: existingVariant ? existingVariant.hasDiscount : hasDiscount,
 
           image: existingVariant?.image ?? "",
 
-          imagePreview: existingVariant?.imagePreview ?? "",
+          imagePreview: existingVariant?.imagePreview || existingVariant?.image || "",
 
           active: true,
 
@@ -695,26 +705,42 @@ export default function EditProductPage() {
 
   useEffect(() => {
 
-    if (!variantsInitialized) return;
+  // WAIT PRODUCT FETCH
+  if (!productLoaded) return;
 
-    const validOptions = variantOptions.map((option) => ({
+  const validOptions = variantOptions
+    .map((option) => ({
       ...option,
+      values: option.values.filter(
+        (value) => value.trim()
+      ),
+    }))
+    .filter(
+      (option) =>
+        option.name.trim() &&
+        option.values.length > 0
+    );
 
-      values: option.values.filter((value) => value.trim()),
+  // NO VARIANTS
+  if (!validOptions.length) {
 
-    })).filter((option) => option.name.trim() && option.values.length > 0);
+    setVariantRows([]);
 
-    if (!validOptions.length) {
+    return;
 
-      setVariantRows([]);
+  }
 
-      return;
+  setVariantRows((prevRows) =>
+    generateVariantCombinations(
+      validOptions,
+      prevRows
+    )
+  );
 
-    }
-
-    setVariantRows((prevRows) => generateVariantCombinations(validOptions,prevRows));
-
-  }, [variantOptions]);
+}, [
+  JSON.stringify(variantOptions),
+  productLoaded
+]);
 
   //SUBMIT 
   const handleSubmit = async (e) => {

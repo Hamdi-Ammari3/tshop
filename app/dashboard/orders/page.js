@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import {FiCheck,FiX,FiClock,FiRotateCcw,FiMapPin,FiPhone} from "react-icons/fi";
+import {FiCheck,FiX,FiClock,FiRotateCcw,FiMapPin,FiPhone,FiLoader} from "react-icons/fi";
 import { updateDoc,doc,getDoc } from "firebase/firestore";
 import { DB } from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
-import { ClipLoader } from "react-spinners";
 import "./orders.css";
 
 export default function OrdersPage() {
@@ -273,10 +272,7 @@ export default function OrdersPage() {
   if (loading || storeLoading) {
     return (
       <div className="orders-loading">
-        <ClipLoader
-          color="#006de2"
-          size={50}
-        />
+        <FiLoader className="spin-icon" />
       </div>
     );
   }
@@ -413,7 +409,7 @@ export default function OrdersPage() {
                   <div className="order-right">
 
                     <div className="order-total">
-                      {o.total_amount || 0} TND
+                      {o.subtotal || 0} TND
                     </div>
 
                     <span
@@ -588,10 +584,7 @@ export default function OrdersPage() {
 
                         {actionLoading ===
                         o.id ? (
-                          <ClipLoader
-                            color="#fff"
-                            size={16}
-                          />
+                          <FiLoader className="spin-icon" />
                         ) : (
                           <>
                             <FiCheck />
@@ -612,10 +605,7 @@ export default function OrdersPage() {
 
                         {actionLoading ===
                         o.id ? (
-                          <ClipLoader
-                            color="#111"
-                            size={16}
-                          />
+                          <FiLoader className="spin-icon" />
                         ) : (
                           <>
                             <FiX />
@@ -638,10 +628,7 @@ export default function OrdersPage() {
 
                       {actionLoading ===
                       o.id ? (
-                        <ClipLoader
-                          color="#111"
-                          size={16}
-                        />
+                        <FiLoader className="spin-icon" />
                       ) : (
                         <>
                           <FiRotateCcw />

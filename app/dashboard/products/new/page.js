@@ -240,7 +240,7 @@ export default function NewProductPage() {
 
     };
 
-  }, [variantRows]);
+  }, []);
 
   //Remove image
   const removeImage = (index) => {
