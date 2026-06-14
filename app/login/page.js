@@ -3,36 +3,20 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
 import { signInWithGoogle } from "../../lib/auth";
 import { DB } from "../../lib/firebaseConfig";
-
-import {
-  doc,
-  getDoc,
-  setDoc,
-} from "firebase/firestore";
-
+import {doc,getDoc,setDoc} from "firebase/firestore";
 import { useAuth } from "../../context/AuthContext";
-
-import {
-  FiArrowLeft,
-  FiLoader,
-} from "react-icons/fi";
-
+import {FiArrowLeft,FiLoader} from "react-icons/fi";
 import "./login.css";
 
 export default function LoginPage() {
 
   const router = useRouter();
 
-  const {
-    user,
-    loading: authLoading,
-  } = useAuth();
+  const {user,loading: authLoading} = useAuth();
 
   const [loading, setLoading] = useState(false);
-
   const [error, setError] = useState("");
 
   /* AUTO REDIRECT */
@@ -44,18 +28,11 @@ export default function LoginPage() {
 
       try {
 
-        const userRef = doc(
-          DB,
-          "users",
-          user.uid
-        );
+        const userRef = doc(DB,"users",user.uid);
 
         const userSnap = await getDoc(userRef);
 
-        if (
-          userSnap.exists() &&
-          userSnap.data()?.storeId
-        ) {
+        if (userSnap.exists() && userSnap.data()?.storeId) {
 
           router.replace("/dashboard");
 
@@ -86,28 +63,20 @@ export default function LoginPage() {
       setError("");
 
       /* GOOGLE LOGIN */
-      const currentUser =
-        await signInWithGoogle();
+      const currentUser = await signInWithGoogle();
 
       /* USER REF */
-      const userRef = doc(
-        DB,
-        "users",
-        currentUser.uid
-      );
+      const userRef = doc(DB,"users",currentUser.uid);
 
-      const userSnap =
-        await getDoc(userRef);
+      const userSnap = await getDoc(userRef);
 
       /* CREATE USER */
       if (!userSnap.exists()) {
 
         await setDoc(userRef, {
-          name:
-            currentUser.displayName || "",
+          name: currentUser.displayName || "",
 
-          email:
-            currentUser.email || "",
+          email: currentUser.email || "",
 
           storeId: null,
 
@@ -116,10 +85,7 @@ export default function LoginPage() {
       }
 
       /* REDIRECT */
-      if (
-        userSnap.exists() &&
-        userSnap.data()?.storeId
-      ) {
+      if (userSnap.exists() && userSnap.data()?.storeId) {
 
         router.replace("/dashboard");
 
@@ -132,20 +98,13 @@ export default function LoginPage() {
 
       console.log(error);
 
-      if (
-        error.code ===
-        "auth/popup-closed-by-user"
-      ) {
+      if (error.code ==="auth/popup-closed-by-user") {
 
-        setError(
-          "Connexion annulée"
-        );
+        setError("Connexion annulée");
 
       } else {
 
-        setError(
-          "Une erreur est survenue. Veuillez réessayer."
-        );
+        setError("Une erreur est survenue. Veuillez réessayer.");
       }
 
     } finally {
@@ -206,8 +165,7 @@ export default function LoginPage() {
             </h2>
 
             <p>
-              Accédez à votre boutique
-              rapidement avec Google.
+              Accédez à votre boutique rapidement avec Google.
             </p>
 
           </div>

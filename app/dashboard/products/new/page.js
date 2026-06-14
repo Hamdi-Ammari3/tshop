@@ -50,40 +50,32 @@ export default function NewProductPage() {
       label: "Beauté & Bien-être",
     },
     {
-      slug: "electronique",
-      label: "Électronique",
-    },
-    {
-      slug: "maison-cuisine",
-      label: "Maison & Cuisine",
-    },
-    {
-      slug: "meubles",
-      label: "Meubles",
+      slug: "bijoux-montres",
+      label: "Bijoux & Montres",
     },
     {
       slug: "telephones-accessoires",
       label: "Téléphones & Accessoires",
     },
     {
-      slug: "sport-fitness",
-      label: "Sport & Fitness",
-    },
-    {
-      slug: "bijoux-montres",
-      label: "Bijoux & Montres",
-    },
-    {
-      slug: "sacs-accessoires",
-      label: "Sacs & Accessoires",
+      slug: "electronique",
+      label: "Électronique",
     },
     {
       slug: "jeux-gaming",
       label: "Jeux & Gaming",
     },
     {
+      slug: "maison-cuisine",
+      label: "Maison & Cuisine",
+    },
+    {
       slug: "bebe-enfants",
       label: "Bébé & Enfants",
+    },
+    {
+      slug: "sport-fitness",
+      label: "Sport & Fitness",
     },
     {
       slug: "automobile",
@@ -97,7 +89,9 @@ export default function NewProductPage() {
       slug: "animalerie",
       label: "Animalerie",
     },
-  ].sort((a, b) => a.label.localeCompare(b.label,"fr",{ sensitivity: "base" }));
+  ]
+
+  //.sort((a, b) => a.label.localeCompare(b.label,"fr",{ sensitivity: "base" }));
 
   //FORMAT PRICE
   const formatPrice = (price) => {

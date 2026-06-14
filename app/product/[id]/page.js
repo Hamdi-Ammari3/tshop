@@ -1,36 +1,74 @@
 "use client";
 
-import { useMemo, useState,useEffect  } from "react";
-import { useParams, useRouter }
-from "next/navigation";
+import { useMemo,useState,useEffect  } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {FiMinus,FiPlus,FiArrowLeft,FiShoppingCart,FiChevronLeft,FiChevronRight,FiShield,FiTruck} from "react-icons/fi";
+import {getProduct,getCategoryProducts} from "../../../lib/products";
+import ProductSection from "../../components/ProductSection";
+import {useMarketplaceCart} from '../../../context/MarketplaceCartContext';
+import {FiMinus,FiPlus,FiArrowLeft,FiShoppingCart,FiChevronLeft,FiChevronRight,FiShield,FiTruck,FiLoader} from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
-import { usePublicStore } from "../../../../../context/PublicStoreContext";
 import "./product.css";
 
 export default function ProductPage() {
 
   const router = useRouter();
+  const { id } = useParams();
 
-  const {store,products,addToCart} = usePublicStore();
+  const {addToCart} = useMarketplaceCart();
 
-  const params = useParams();
-
-  const slug = params.slug;
-
-  const productId = params.productId;
-
-  const product = products.find((p) => p.id === productId);
-
+  const [product,setProduct] = useState(null);
+  const [selectedImage,setSelectedImage] = useState("");
+  const [similarProducts,setSimilarProducts] = useState([]);
   const [selectedIndex,setSelectedIndex] = useState(0);
   const [quantity,setQuantity] = useState(1);
   const [ordering,setOrdering] = useState(false);
   const [selectedOptions,setSelectedOptions] = useState({});
   const [selectedLot,setSelectedLot] = useState(null);
   const [manualImage,setManualImage] = useState(false);
+  const [loading,setLoading] = useState(true);
 
+  useEffect(() => {
+
+    async function load() {
+
+            try {
+
+                const data = await getProduct(id);
+
+                setProduct(data);
+
+                setSelectedImage(data?.images?.[0]);
+
+                if (data?.category_slug) {
+
+                    const result = await getCategoryProducts(data.category_slug,8);
+
+                    const filtered = result.products.filter(item => item.id !== data.id);
+
+                    setSimilarProducts(filtered);
+
+                }
+
+            } catch(error) {
+
+                console.log(error);
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        }
+
+        if(id) {
+            load();
+        }
+
+    }, [id]);
+  
   /* DEFAULT OPTIONS */
   useEffect(() => {
 
@@ -64,7 +102,7 @@ export default function ProductPage() {
 
     }
 
-  }, []);
+  }, [product]);
 
   const currentImage = product?.images?.[selectedIndex] || "/placeholder.png";
 
@@ -79,16 +117,16 @@ export default function ProductPage() {
   const activeImage = manualImage ? currentImage : (selectedVariant?.image || currentImage);
 
   /* ACTIVE PRICE */
-  const activePrice = selectedVariant?.price || product.price;
+  const activePrice = selectedVariant?.price || product?.price;
 
   /* ACTIVE OLD PRICE */
-  const activeOldPrice = selectedVariant?.oldPrice || product.oldPrice;
+  const activeOldPrice = selectedVariant?.oldPrice || product?.oldPrice;
 
   /* ACTIVE INVENTORY */
-  const activeInventory = selectedVariant?.inventory ?? product.inventory;
+  const activeInventory = selectedVariant?.inventory ?? product?.inventory;
 
   /* MAX QUANTITY */
-  const maxQuantity = product.trackInventory ? Number(activeInventory || 0) : Infinity; 
+  const maxQuantity = product?.trackInventory ? Number(activeInventory || 0) : Infinity; 
 
   /* TOTAL */
   const totalPrice = useMemo(() => {
@@ -141,13 +179,13 @@ export default function ProductPage() {
 
   useEffect(() => {
 
-    if (product.trackInventory && quantity > maxQuantity) {
+    if (product?.trackInventory && quantity > maxQuantity) {
 
       setQuantity(maxQuantity > 0 ? maxQuantity: 1);
 
     }
 
-  }, [quantity,maxQuantity,product.trackInventory]);
+  }, [quantity,maxQuantity,product?.trackInventory]);
 
   // NEXT IMAGE
   const nextImage = () => {
@@ -183,7 +221,7 @@ export default function ProductPage() {
 
     }
 
-  }, [selectedVariant,product.images]);
+  }, [selectedVariant,product?.images]);
 
 
   // ADD TO CART
@@ -214,7 +252,7 @@ export default function ProductPage() {
 
   };
 
-  /* BUY NOW */
+  // BUY NOW
   const handleBuyNow = async () => {
 
     try {
@@ -251,12 +289,23 @@ export default function ProductPage() {
     }
   };
 
-  const description = product.description || "Aucune description disponible pour ce produit.";
+  const description = product?.description || "Aucune description disponible pour ce produit.";
 
   const isLongDescription = description.length > 180;
 
+  //Loading ...
+  if(loading) {
+  
+    return (
+      <div className="loading-page">
+        <FiLoader className="spin-icon"/>
+      </div>
+    );
+  
+  }
+
   /* NOT FOUND */
-  if (!product || !store) {
+  if (!product) {
     return (
       <div className="product-not-found">
 
@@ -274,7 +323,7 @@ export default function ProductPage() {
 
   return (
     <div className="product-page">
-
+      <>
       {/* TOP */}
       <div className="product-top">
 
@@ -286,7 +335,7 @@ export default function ProductPage() {
 
           <FiArrowLeft />
 
-          Retour à la boutique
+          Retour
 
         </Link>
 
@@ -371,6 +420,42 @@ export default function ProductPage() {
         {/* RIGHT */}
         <div className="product-details">
 
+          <div className="store-profile">
+
+            <Link
+              href={`/profile/${product.storeSlug}`}
+              className="store-link"
+            >
+              {product.storeLogo ? (
+
+                <img
+                  src={product.storeLogo}
+                  alt={product.storeName}
+                  className="store-logo"
+                />
+
+              ) : (
+
+                <div className="store-avatar">
+
+                  {product.storeName?.charAt(0)}
+
+                </div>
+
+              )}
+
+              <div>
+
+                <h4>
+                  {product.storeName}
+                </h4>
+
+              </div>
+
+            </Link>
+
+          </div>
+
           <h1>{product.name}</h1>
 
           <p>{product.description}</p>
@@ -391,11 +476,6 @@ export default function ProductPage() {
               )}
 
             </div>
-
-            <p>
-              Prix unitaire
-            </p>
-
           </div>
 
           {/* VARIANTS */}
@@ -671,6 +751,14 @@ export default function ProductPage() {
 
         </div>
 
+      </div>
+      </>
+      
+      <div className="similar-products">
+      <ProductSection
+        title="Produits similaires"
+        products={similarProducts}
+      />
       </div>
 
     </div>

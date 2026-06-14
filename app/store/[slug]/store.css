@@ -454,7 +454,7 @@
 
 .store-products-top h3 {
   margin: 0;
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
   color: #111827;
   letter-spacing: -1px;
@@ -669,20 +669,19 @@
   gap: 10px;
 }
 
+.store-product-top > h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+}
+
 .store-product-top svg {
   flex-shrink: 0;
 
   color: #9ca3af;
 
   font-size: 18px;
-}
-
-.store-product-info h3 {
-  margin: 0;
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: #111827;
 }
 
 .store-product-info p {
@@ -703,7 +702,7 @@
 }
 
 .store-product-price span {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 900;
 
   color: #111827;
@@ -829,7 +828,7 @@
   }
 
   .store-products-top h3 {
-    font-size: 22px;
+    font-size: 18px;
   }
 
   .store-products-top p {

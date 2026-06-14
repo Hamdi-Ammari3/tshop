@@ -45,9 +45,7 @@ export default function StoreShell({children}) {
         </h1>
 
         <p>
-          Cette boutique
-          n'existe pas ou a
-          été supprimée.
+          Cette boutique n'existe pas ou a été supprimée.
         </p>
 
       </div>

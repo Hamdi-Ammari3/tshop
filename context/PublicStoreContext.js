@@ -69,7 +69,7 @@ export function PublicStoreProvider({slug,children}) {
   useEffect(() => {
     if (!slug) return;
 
-    const savedCart =localStorage.getItem(`cart-${slug}`);
+    const savedCart = localStorage.getItem(`cart-${slug}`);
 
     if (savedCart) {
       try {
@@ -80,7 +80,7 @@ export function PublicStoreProvider({slug,children}) {
     }
   }, [slug]);
 
-  /* SAVE CART */
+  //SAVE CART
   useEffect(() => {
     if (!slug) return;
 
@@ -92,10 +92,10 @@ export function PublicStoreProvider({slug,children}) {
   const filteredProducts = useMemo(() => {
     let filtered = [...products];
 
-    /* SEARCH */
+    //SEARCH
     filtered = filtered.filter((product) => product.name ?.toLowerCase().includes(search.toLowerCase()));
 
-    /* SORT */
+    //SORT
     if (sortBy === "low") {filtered.sort((a, b) => Number(a.price) - Number(b.price))}
     if (sortBy === "high") {filtered.sort((a, b) => Number(b.price) -Number(a.price))}
     if (sortBy === "newest") {filtered.sort((a, b) => new Date(b.createdAt) -new Date(a.createdAt))}
@@ -104,125 +104,100 @@ export function PublicStoreProvider({slug,children}) {
 
   }, [products, search, sortBy]);
 
-  /* CART COUNT */
+  //CART COUNT
   const cartCount = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.quantity, 0);
   }, [cart]);
 
-  /* CART SUBTOTAL */
+  //CART SUBTOTAL
   const cartSubtotal = useMemo(() => {
 
-  return cart.reduce((acc, item) => {
+    return cart.reduce((acc, item) => {
 
-    // LOT
-    if (item.selectedLot) {
+      // LOT
+      if (item.selectedLot) {
 
-      return (
-        acc +
-        Number(item.finalPrice || 0)
-      );
+        return (acc + Number(item.finalPrice || 0));
 
-    }
+      }
 
-    // NORMAL
-    return (
-      acc +
-      Number(item.finalPrice || 0) *
-      item.quantity
-    );
+      // NORMAL
+      return (acc + Number(item.finalPrice || 0) * item.quantity);
 
-  }, 0);
+    }, 0);
 
-}, [cart]);
+  }, [cart]);
 
-  /* SHIPPING */
+  //SHIPPING
   const shippingFee = useMemo(() => {
+
     if (!cart.length) return 0;
+
     return Number(store?.shipping_fee || 8);
+
   }, [store, cart]);
 
-  /* FINAL TOTAL */
+  //FINAL TOTAL
   const cartTotal = useMemo(() => {
+
     return cartSubtotal + shippingFee;
+
   }, [cartSubtotal, shippingFee]);
 
-  /* ADD TO CART */
+  //ADD TO CART
   function addToCart(product, qty = 1) {
 
-  setCart((prev) => {
+    setCart((prev) => {
 
-    const existing =
-      prev.find(
-        (item) =>
-          item.cartItemId ===
-          product.cartItemId
-      );
+      const existing = prev.find((item) => item.cartItemId === product.cartItemId);
 
-    // UPDATE EXISTING
-    if (existing) {
+      // UPDATE EXISTING
+      if (existing) {
 
-      return prev.map((item) =>
+        return prev.map((item) =>
 
-        item.cartItemId ===
-        product.cartItemId
+          item.cartItemId === product.cartItemId
 
-          ? {
+            ? {
               ...item,
-              quantity:
-                item.quantity + qty,
+              quantity: item.quantity + qty,
             }
 
-          : item
-      );
+            : item
+        );
 
-    }
+      }
 
-    // NEW ITEM
-    return [
-      ...prev,
-      {
-        ...product,
-        quantity: qty,
-      },
-    ];
+      // NEW ITEM
+      return [...prev,{...product,quantity: qty}];
 
-  });
-
-}
-
-  /* REMOVE FROM CART */
-  function removeFromCart(cartItemId) {
-
-  setCart((prev) =>
-    prev.filter(
-      (item) =>
-        item.cartItemId !==
-        cartItemId
-    )
-  );
-
-}
-
-  /* UPDATE QUANTITY */
-  function updateCartQuantity(
-  cartItemId,
-  quantity
-) {
-
-  if (quantity <= 0) {
-
-    removeFromCart(cartItemId);
-
-    return;
+    });
 
   }
 
-  setCart((prev) =>
+  //REMOVE FROM CART
+  function removeFromCart(cartItemId) {
 
-    prev.map((item) =>
+    setCart((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
 
-      item.cartItemId ===
-      cartItemId
+  }
+
+  //UPDATE QUANTITY
+  function updateCartQuantity(cartItemId,quantity) {
+
+    if (quantity <= 0) {
+
+      removeFromCart(cartItemId);
+
+      return;
+
+    }
+
+    setCart((prev) =>
+
+      prev.map((item) =>
+
+        item.cartItemId === cartItemId
 
         ? {
             ...item,
@@ -230,13 +205,13 @@ export function PublicStoreProvider({slug,children}) {
           }
 
         : item
-    )
+      )
 
-  );
+    );
 
-}
+  }
 
-  /* CLEAR CART */
+  //CLEAR CART */
   function clearCart() {
     setCart([]);
   }

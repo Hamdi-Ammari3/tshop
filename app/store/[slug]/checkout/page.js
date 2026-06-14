@@ -3,9 +3,10 @@
 import {useMemo,useState} from "react";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
-import {addDoc,collection} from "firebase/firestore";
+import {addDoc,collection,serverTimestamp} from "firebase/firestore";
 import {DB} from "../../../../lib/firebaseConfig";
 import {usePublicStore} from "../../../../context/PublicStoreContext";
+import {tunisiaLocations} from '../../../../lib/tunisiaLocations'
 import {FiArrowLeft,FiCheck,FiLoader,FiX,FiAlertCircle,FiTruck,FiShield} from "react-icons/fi";
 import "./checkout.css";
 
@@ -13,15 +14,18 @@ export default function CheckoutPage() {
 
   const router = useRouter();
 
-  const {store,cart,cartSubtotal,shippingFee,cartTotal,clearCart,} = usePublicStore();
+  const {store,cart,cartSubtotal,shippingFee,cartTotal,clearCart} = usePublicStore();
 
   const [clientName,setClientName] = useState("");
   const [clientPhone,setClientPhone] = useState("");
+  const [governorate,setGovernorate] = useState("");
+  const [delegation,setDelegation] = useState("");
   const [clientAddress,setClientAddress] = useState("");
-  const [notes,setNotes] = useState("");
   const [loading,setLoading] = useState(false);
   const [success,setSuccess] = useState(false);
   const [toast,setToast] = useState(null);
+
+  const delegations = governorate ? tunisiaLocations[governorate] || [] : [];
 
   /* TOTAL ITEMS */
   const totalItems = useMemo(() => {
@@ -77,9 +81,23 @@ export default function CheckoutPage() {
     }
 
     /* ADDRESS */
+    if (!governorate) {
+
+      showToast("Veuillez sélectionner un gouvernorat");
+
+      return;
+    }
+
+    if (!delegation) {
+
+      showToast("Veuillez sélectionner une délégation");
+
+      return;
+    }
+
     if (!clientAddress.trim()) {
 
-      showToast("Veuillez saisir votre adresse");
+      showToast("Veuillez saisir votre adresse détaillée");
 
       return;
     }
@@ -133,6 +151,8 @@ export default function CheckoutPage() {
 
       /* ORDER */
       await addDoc(collection(DB,"orders"),{
+        source: "store_website",
+
         storeId: store.id,
 
         storeName: store.name,
@@ -155,11 +175,17 @@ export default function CheckoutPage() {
 
         clientAddress: clientAddress.trim(),
 
+        governorate,
+
+        delegation,
+
+        fullAddress: `${clientAddress.trim()}, ${delegation}, ${governorate}`,
+
         payment_method: "cash_on_delivery",
 
         status: "pending",
 
-        createdAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
       });
 
       setSuccess(true);
@@ -303,24 +329,22 @@ export default function CheckoutPage() {
 
             </div>
 
-            {/* NAME */}
-            <div className="form-group">
-
-              <label>
-                Nom complet
-              </label>
-
-              <input
-                type="text"
-                placeholder="Votre nom complet"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-              />
-
-            </div>
-
-            {/* GRID */}
             <div className="double-grid">
+
+              <div className="form-group">
+
+                <label>
+                  Nom complet
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="Votre nom complet"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                />
+
+              </div>
 
               <div className="form-group">
 
@@ -337,22 +361,102 @@ export default function CheckoutPage() {
 
               </div>
 
-              <div className="form-group">
-
-                <label>
-                  Adresse de livraison
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Votre adresse"
-                  value={clientAddress}
-                  onChange={(e) => setClientAddress(e.target.value)}
-                />
-
-              </div>
-
             </div>
+
+            <div className="double-grid">
+
+    {/* GOVERNORATE */}
+    <div className="form-group">
+
+        <label>
+            Gouvernorat
+        </label>
+
+        <select
+            value={governorate}
+            onChange={(e) => {
+
+                setGovernorate(e.target.value);
+                setDelegation("");
+
+            }}
+        >
+
+            <option value="">
+                Sélectionner
+            </option>
+
+            {Object.keys(tunisiaLocations).map((gov) => (
+
+                <option
+                    key={gov}
+                    value={gov}
+                >
+
+                    {gov}
+
+                </option>
+
+            ))}
+
+        </select>
+
+    </div>
+
+    {/* DELEGATION */}
+    <div className="form-group">
+
+        <label>
+            Délégation
+        </label>
+
+        <select
+            value={delegation}
+            disabled={!governorate}
+            onChange={(e) =>
+                setDelegation(e.target.value)
+            }
+        >
+
+            <option value="">
+                Sélectionner
+            </option>
+
+            {delegations.map((city) => (
+
+                <option
+                    key={city}
+                    value={city}
+                >
+
+                    {city}
+
+                </option>
+
+            ))}
+
+        </select>
+
+    </div>
+
+</div>
+
+<div className="form-group">
+
+    <label>
+        Adresse détaillée
+    </label>
+
+    <input
+        type="text"
+        placeholder="Rue, immeuble, appartement..."
+        value={clientAddress}
+        onChange={(e) =>
+            setClientAddress(e.target.value)
+        }
+    />
+
+</div>
 
           </div>
 

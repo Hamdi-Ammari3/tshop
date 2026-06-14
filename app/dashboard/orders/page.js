@@ -309,33 +309,21 @@ export default function OrdersPage() {
         </button>
 
         <button
-          className={
-            filter === "pending"
-              ? "active"
-              : ""
-          }
+          className={filter === "pending" ? "active" : ""}
           onClick={() => setFilter("pending")}
         >
           En attente
         </button>
 
         <button
-          className={
-            filter === "week"
-              ? "active"
-              : ""
-          }
+          className={filter === "week" ? "active" : ""}
           onClick={() => setFilter("week")}
         >
           Cette semaine
         </button>
 
         <button
-          className={
-            filter === "month"
-              ? "active"
-              : ""
-          }
+          className={filter === "month" ? "active" : ""}
           onClick={() => setFilter("month")}
         >
           Ce mois
@@ -348,9 +336,7 @@ export default function OrdersPage() {
         <div className="orders-empty">
 
           <h3>
-            {filter === "pending"
-              ? "Aucune commande en attente"
-              : "Aucune commande trouvée"}
+            {filter === "pending" ? "Aucune commande en attente" : "Aucune commande trouvée"}
           </h3>
 
           <p>
@@ -392,14 +378,12 @@ export default function OrdersPage() {
                     <div>
 
                       <h3 className="customer-name">
-                        {o.clientName ||
-                          "Client"}
+                        {o.clientName || "Client"}
                       </h3>
 
                       <p className="customer-phone">
                         <FiPhone size={13} />
-                        {o.clientPhone ||
-                          "Numéro indisponible"}
+                        {o.clientPhone || "Numéro indisponible"}
                       </p>
 
                     </div>
@@ -412,28 +396,15 @@ export default function OrdersPage() {
                       {o.subtotal || 0} TND
                     </div>
 
-                    <span
-                      className={`status-badge ${o.status}`}
-                    >
+                    <span className={`status-badge ${o.status}`}>
 
-                      {o.status ===
-                        "pending" && (
-                        <FiClock />
-                      )}
+                      {o.status === "pending" && (<FiClock />)}
 
-                      {o.status ===
-                        "done" && (
-                        <FiCheck />
-                      )}
+                      {o.status === "done" && (<FiCheck />)}
 
-                      {o.status ===
-                        "cancelled" && (
-                        <FiX />
-                      )}
+                      {o.status === "cancelled" && (<FiX />)}
 
-                      {getStatusLabel(
-                        o.status
-                      )}
+                      {getStatusLabel(o.status)}
 
                     </span>
 
@@ -446,43 +417,32 @@ export default function OrdersPage() {
 
                   {o.items?.map((item, index) => (
                     <div
-  key={
-    item.productId ||
-    index
-  }
-  className="mobile-order-product"
->
+                      key={item.productId || index}
+                      className="mobile-order-product"
+                    >
 
-  {/* IMAGE */}
-  <div className="order-product-image">
+                      {/* IMAGE */}
+                      <div className="order-product-image">
 
-    <img
-      src={
-        item.selectedVariant
-          ?.image ||
-        item.productImage ||
-        "/placeholder.png"
-      }
-      alt={item.productName}
-    />
+                        <img
+                          src={item.selectedVariant?.image || item.productImage || "/placeholder.png"}
+                          alt={item.productName}
+                        />
 
-  </div>
+                      </div>
 
-  {/* CONTENT */}
-  <div className="order-product-content">
+                      {/* CONTENT */}
+                      <div className="order-product-content">
 
-    <div className="order-product-left">
+                        <div className="order-product-left">
 
-      <span className="order-product-name">
+                          <span className="order-product-name">
 
-        {item.productName}
+                            {item.productName}
 
-        <strong>
-          {" "}
-          × {item.quantity}
-        </strong>
+                            <strong>{" "} × {item.quantity}</strong>
 
-      </span>
+                          </span>
 
       {/* VARIANTS */}
       {item.selectedOptions &&
@@ -556,8 +516,7 @@ export default function OrdersPage() {
                     />
 
                     <span>
-                      {o.clientAddress ||
-                        "Adresse indisponible"}
+                      {o.fullAddress || o.clientAddress}
                     </span>
 
                   </div>

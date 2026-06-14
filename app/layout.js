@@ -3,6 +3,7 @@ import { Noto_Sans_Arabic } from "next/font/google"
 import LayoutWrapper from "./components/LayoutWrapper"
 import {AuthProvider} from '../context/AuthContext'
 import {StoreProvider} from '../context/StoreContext';
+import {MarketplaceCartProvider} from "../context/MarketplaceCartContext";
 
 const notoArabic = Noto_Sans_Arabic({
   subsets: ["arabic"],
@@ -21,11 +22,19 @@ export default function RootLayout({ children }) {
     <html lang="ar">
       <body id="app-container" className={notoArabic.variable}>
         <AuthProvider>
+
           <StoreProvider>
-          <LayoutWrapper>
-            {children}
-          </LayoutWrapper>
+
+            <MarketplaceCartProvider>
+
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+              
+            </MarketplaceCartProvider>
+
           </StoreProvider>
+
         </AuthProvider>
       </body>
     </html>

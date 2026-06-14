@@ -101,14 +101,8 @@ export default function StorePage() {
             </h3>
 
             <p>
-              {filteredProducts.length} produit
-              {filteredProducts.length > 1
-                ? "s"
-                : ""}{" "}
-              disponible
-              {filteredProducts.length > 1
-                ? "s"
-                : ""}
+              {filteredProducts.length} produit {filteredProducts.length > 1 ? "s" : ""}{" "} disponible
+              {filteredProducts.length > 1 ? "s" : ""}
             </p>
 
           </div>
@@ -117,11 +111,7 @@ export default function StorePage() {
 
             <select
               value={sortBy}
-              onChange={(e) =>
-                setSortBy(
-                  e.target.value
-                )
-              }
+              onChange={(e) => setSortBy(e.target.value)}
             >
 
               <option value="newest">
@@ -143,8 +133,7 @@ export default function StorePage() {
         </div>
 
         {/* EMPTY */}
-        {filteredProducts.length ===
-          0 && (
+        {filteredProducts.length === 0 && (
           <div className="store-empty">
 
             <FiShoppingBag />
@@ -162,113 +151,96 @@ export default function StorePage() {
         )}
 
         {/* GRID */}
-<div className="store-products-grid">
+        <div className="store-products-grid">
 
-  {filteredProducts.map((product) => {
+          {filteredProducts.map((product) => {
 
-    const productUrl = isLocalhost ? `/store/${slug}/product/${product.id}` : `/product/${product.id}`;
+            const productUrl = isLocalhost ? `/store/${slug}/product/${product.id}` : `/product/${product.id}`;
 
-    return (
+            return (
 
-      <Link
-        key={product.id}
-        href={productUrl}
-        className="store-product-card"
-      >
-
-        {/* IMAGE */}
-        <div className="store-product-image">
-
-          <img
-            src={
-              product.images?.[
-                imageIndexes[product.id] || 0
-              ] || "/placeholder.png"
-            }
-            alt={product.name}
-            loading="lazy"
-          />
-
-          {product.images?.length > 1 && (
-
-            <>
-              <button
-                className="product-image-arrow left"
-                onClick={(e) =>
-                  prevImage(
-                    e,
-                    product.id,
-                    product.images.length
-                  )
-                }
+              <Link
+                key={product.id}
+                href={productUrl}
+                className="store-product-card"
               >
-                <FiChevronLeft />
-              </button>
 
-              <button
-                className="product-image-arrow right"
-                onClick={(e) =>
-                  nextImage(
-                    e,
-                    product.id,
-                    product.images.length
-                  )
-                }
-              >
-                <FiChevronRight />
-              </button>
-            </>
+                {/* IMAGE */}
+                <div className="store-product-image">
 
-          )}
+                  <img
+                    src={product.images?.[imageIndexes[product.id] || 0] || "/placeholder.png"}
+                    alt={product.name}
+                    loading="lazy"
+                  />
 
-          {product.hasDiscount && (
-            <span className="discount-badge">
-              Promo
-            </span>
-          )}
+                  {product.images?.length > 1 && (
+
+                    <>
+                      <button
+                        className="product-image-arrow left"
+                        onClick={(e) => prevImage(e,product.id,product.images.length)}
+                      >
+                        <FiChevronLeft />
+                      </button>
+
+                      <button
+                        className="product-image-arrow right"
+                        onClick={(e) => nextImage(e,product.id,product.images.length)}
+                      >
+                        <FiChevronRight />
+                      </button>
+                    </>
+
+                  )}
+
+                  {product.hasDiscount && (
+                    <span className="discount-badge">
+                      - {Math.round(((product.oldPrice - product.price) /product.oldPrice) * 100)} %
+                    </span>
+                  )}
+
+                </div>
+
+                {/* INFO */}
+                <div className="store-product-info">
+
+                  <div className="store-product-top">
+
+                    <h3>
+                      {product.name}
+                    </h3>
+
+                    <FiArrowUpRight />
+
+                  </div>
+
+                  <p>
+                    {product.category || "Produit"}
+                  </p>
+
+                  <div className="store-product-price">
+
+                    <span>
+                      {product.price} TND
+                    </span>
+
+                    {product.hasDiscount && (
+                      <small>
+                        {product.oldPrice} TND
+                      </small>
+                    )}
+
+                  </div>
+
+                </div>
+
+              </Link>
+
+            );
+          })}
 
         </div>
-
-        {/* INFO */}
-        <div className="store-product-info">
-
-          <div className="store-product-top">
-
-            <h3>
-              {product.name}
-            </h3>
-
-            <FiArrowUpRight />
-
-          </div>
-
-          <p>
-            {product.category ||
-              "Produit"}
-          </p>
-
-          <div className="store-product-price">
-
-            <span>
-              {product.price} TND
-            </span>
-
-            {product.hasDiscount && (
-              <small>
-                {product.oldPrice} TND
-              </small>
-            )}
-
-          </div>
-
-        </div>
-
-      </Link>
-
-    );
-  })}
-
-</div>
 
       </section>
 

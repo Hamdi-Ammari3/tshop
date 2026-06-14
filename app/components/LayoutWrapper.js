@@ -1,63 +1,31 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
-
-import {
-  usePathname,
-} from "next/navigation";
-
+import {useEffect,useState} from "react";
+import {usePathname} from "next/navigation";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 
-export default function LayoutWrapper({
-  children,
-}) {
+export default function LayoutWrapper({children}) {
 
-  const pathname =
-    usePathname();
+  const pathname = usePathname();
 
-  const [mounted, setMounted] =
-    useState(false);
-
-  const [hideLayout,
-    setHideLayout] =
-    useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [hideLayout,setHideLayout] = useState(false);
 
   useEffect(() => {
 
-    const hostname =
-      window.location.hostname;
+    const hostname = window.location.hostname;
 
     /* DASHBOARD */
-    const isDashboard =
-      pathname.startsWith(
-        "/dashboard"
-      );
+    const isDashboard = pathname.startsWith("/dashboard");
 
     /* DEV STORE */
-    const isStorePreview =
-      pathname.startsWith(
-        "/store/"
-      );
+    const isStorePreview = pathname.startsWith("/store/");
 
     /* PROD STORE SUBDOMAIN */
-    const isStoreSubdomain =
-      hostname.endsWith(
-        ".tunyshop.com"
-      ) &&
-      hostname !==
-        "tunyshop.com" &&
-      hostname !==
-        "www.tunyshop.com";
+    const isStoreSubdomain = hostname.endsWith(".tunyshop.com") && hostname !== "tunyshop.com" && hostname !== "www.tunyshop.com";
 
-    setHideLayout(
-      isDashboard ||
-      isStorePreview ||
-      isStoreSubdomain
-    );
+    setHideLayout(isDashboard || isStorePreview || isStoreSubdomain);
 
     setMounted(true);
 

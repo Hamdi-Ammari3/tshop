@@ -1,0 +1,140 @@
+.store-profile-page{
+    max-width:1400px;
+    margin:auto;
+    padding:24px;
+}
+
+.store-header{
+    margin-bottom:32px;
+}
+
+.store-header-card{
+    background:#fff;
+    border:1px solid #ececec;
+    border-radius:24px;
+    padding:24px;
+    display:flex;
+    align-items:center;
+    gap:20px;
+    box-shadow:0 4px 20px rgba(0,0,0,.04);
+}
+
+.store-profile-logo{
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    object-fit:cover;
+    border:1px solid #eee;
+}
+
+.store-profile-avatar{
+    width:90px;
+    height:90px;
+    border-radius:50%;
+    background:#f4f4f4;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:32px;
+    font-weight:700;
+}
+
+.store-header-info h1{
+    margin:0;
+    font-size:28px;
+    font-weight:700;
+}
+
+.store-meta{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-top:10px;
+    color:#666;
+    font-size:14px;
+}
+
+.store-products{
+    margin-top:24px;
+}
+
+.section-header{
+    margin-bottom:20px;
+}
+
+.section-header h2{
+    font-size:24px;
+    font-weight:700;
+    margin:0;
+}
+
+.products-grid{
+    display:grid;
+    grid-template-columns:
+      repeat(auto-fill,minmax(240px,1fr));
+    gap:20px;
+}
+
+.empty-products{
+    background:#fff;
+    border:1px solid #ececec;
+    border-radius:20px;
+    padding:40px;
+    text-align:center;
+    color:#666;
+}
+
+.profile-loading{
+    height:70vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.spin-icon{
+    font-size:40px;
+    animation:spin 1s linear infinite;
+}
+
+.profile-not-found{
+    height:70vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:20px;
+}
+
+@keyframes spin{
+    from{
+        transform:rotate(0deg);
+    }
+    to{
+        transform:rotate(360deg);
+    }
+}
+
+@media (max-width:768px){
+
+    .store-profile-page{
+        padding:16px;
+    }
+
+    .store-header-card{
+        flex-direction:column;
+        text-align:center;
+    }
+
+    .store-meta{
+        justify-content:center;
+    }
+
+    .store-header-info h1{
+        font-size:22px;
+    }
+
+    .products-grid{
+        grid-template-columns:
+          repeat(2,minmax(0,1fr));
+        gap:14px;
+    }
+}
