@@ -1,3 +1,4 @@
+/*
 import OpenAI from "openai";
 
 import { buildPostPrompt } from "../../../lib/ai/postPrompt";
@@ -117,3 +118,4 @@ export async function POST(request) {
   }
 
 }
+  */
