@@ -6,6 +6,7 @@ import {collection,doc,getDoc,updateDoc,addDoc,serverTimestamp} from "firebase/f
 import { DB } from "../../../../lib/firebaseConfig";
 import { uploadToCloudinary } from "../../../../lib/uploadToCloudinary";
 import {useStore} from "../../../../context/StoreContext";
+import { categories } from "../../../../data/categories";
 import Link from "next/link";
 import {FiArrowLeft,FiUpload,FiX,FiStar,FiAlertCircle,FiCheckCircle,FiChevronDown,FiImage,FiTag,FiPackage,FiPercent,FiFileText,FiLayers,FiPlus,FiTrash2 } from "react-icons/fi";
 import { LuBoxes,LuArchive } from "react-icons/lu";
@@ -22,6 +23,7 @@ export default function EditProductPage() {
   const [productLoaded,setProductLoaded] = useState(false);
   const [name, setName] = useState("");
   const [category, setCategory] = useState(null);
+  const [subcategory, setSubcategory] = useState(null);
   const [description, setDescription] = useState("");
   const [images, setImages] = useState([]);
   const [price, setPrice] = useState("");
@@ -68,6 +70,17 @@ export default function EditProductPage() {
       const matchedCategory = categories.find((cat) => cat.slug === data.category_slug);
 
       setCategory(matchedCategory || null);
+
+      // SUB-CATEGORY
+      if (matchedCategory) {
+
+        const matchedSubcategory = matchedCategory.subcategories?.find((sub) =>sub.slug === data.subcategory_slug);
+
+        setSubcategory(
+          matchedSubcategory || null
+        );
+
+      }
 
       // PRICE
       setHasDiscount(data.hasDiscount || false);
@@ -197,7 +210,7 @@ export default function EditProductPage() {
   const getVariantKey = (id) => `variant-${id}`;
 
   //CATEGORIES
-  const categories = [
+  const categoriess = [
     {
       slug: "mode",
       label: "Mode",
@@ -255,6 +268,15 @@ export default function EditProductPage() {
       label: "Animalerie",
     },
   ].sort((a, b) => a.label.localeCompare(b.label,"fr",{ sensitivity: "base" }));
+
+  //Category selec
+  const handleCategorySelect = (selectedCategory) => {
+
+    setCategory(selectedCategory);
+
+    setSubcategory(null);
+
+  };
 
   //FORMAT PRICE
   const formatPrice = (price) => {
@@ -764,6 +786,18 @@ export default function EditProductPage() {
       return;
     }
 
+    if (!category) {
+      showToast("Veuillez choisir une catégorie.");
+      return;
+
+    }
+
+    if (!subcategory) {
+      showToast("Veuillez choisir une sous-catégorie.");
+      return;
+    }
+
+
     if (!price || Number(price) <= 0) {
       showToast("Le prix doit être supérieur à 0.");
       return;
@@ -837,11 +871,6 @@ export default function EditProductPage() {
       }
     }
 
-    if (!category) {
-      showToast("Veuillez choisir une catégorie.");
-      return;
-    }
-
     try {
 
       setLoading(true);
@@ -901,6 +930,8 @@ export default function EditProductPage() {
         name: name.trim(),
         category: category.label,
         category_slug: category.slug,
+        subcategory: subcategory.label,
+        subcategory_slug: subcategory.slug,
         description: description.trim(),
         price: hasDiscount ? Number(discountedPrice) : Number(price),
         hasDiscount,
@@ -1175,6 +1206,121 @@ export default function EditProductPage() {
             </div>
 
           </div>
+
+          {/* CATEGORY */}
+          <div className="product-card">
+
+            <div className="product-card-header">
+
+              <div className="product-card-title-wrap">
+
+                <div className="product-card-icon">
+                  <FiFileText />
+                </div>
+
+                <div>
+
+                  <h3>Catégorie</h3>
+
+                  <p>
+                    Sélectionnez la catégorie principale du produit.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="product-card-content">
+
+              <div className="categories-grid">
+
+                {categories.map((cat) => (
+
+                  <button
+                    key={cat.slug}
+                    type="button"
+                    className={`category-card ${category?.slug === cat.slug ? "active" : ""}`}
+                    onClick={() =>
+                      handleCategorySelect(cat)
+                    }
+                  >
+
+                    <img
+                      src={cat.image}
+                      alt={cat.label}
+                    />
+
+                    <span>
+                      {cat.label}
+                    </span>
+
+                  </button>
+
+                ))}
+
+              </div>
+
+            </div>
+
+          </div>
+          
+          {/* SUB-CATEGORY */}
+          {category && (
+
+            <div className="product-card">
+
+              <div className="product-card-header">
+
+                <div className="product-card-title-wrap">
+
+                  <div className="product-card-icon">
+                    <FiLayers />
+                  </div>
+
+                  <div>
+
+                    <h3>Sous-catégorie</h3>
+
+                    <p>
+                      Choisissez le type précis du produit.
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <div className="product-card-content">
+
+                <div className="subcategories-grid">
+
+                  {category.subcategories.map((sub) => (
+
+                    <button
+                      key={sub.slug}
+                      type="button"
+                      className={`subcategory-card ${subcategory?.slug === sub.slug ? "active" : ""}`}
+                      onClick={() =>
+                        setSubcategory(sub)
+                      }
+                    >
+
+                      {sub.label}
+
+                    </button>
+
+                  ))}
+
+                </div>
+
+              </div>
+
+            </div>
+
+          )}
 
           {/* PRIX */}
           <div className="product-card">
@@ -2504,10 +2650,137 @@ export default function EditProductPage() {
             </div>
 
           </div>
+          
+          {/* RESUMEE */}
+          <div className="product-card">
+
+            <div className="product-card-header">
+
+              <div className="product-card-title-wrap">
+
+                <div className="product-card-icon">
+                  <FiFileText />
+                </div>
+
+                <div>
+
+                  <h3>Résumé</h3>
+
+                  <p>
+                    Vérifiez les informations avant la mise à jour.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <div className="product-card-content">
+
+              <div className="summary-box">
+
+                <ul>
+
+                  <li>
+                    <span>Images</span>
+                    <strong>{images.length}</strong>
+                  </li>
+
+                  <li>
+                    <span>Variantes</span>
+                    <strong>{variantRows.length}</strong>
+                  </li>
+
+                  <li>
+                    <span>Lots</span>
+                    <strong>{lotRules.length}</strong>
+                  </li>
+
+                  <li>
+                    <span>Catégorie</span>
+                    <strong>
+                      {category?.label || "-"}
+                    </strong>
+                  </li>
+
+                  <li>
+                    <span>Sous-catégorie</span>
+                    <strong>
+                      {subcategory?.label || "-"}
+                    </strong>
+                  </li>
+
+                </ul>
+
+              </div>
+
+              {toast && (
+                <div className={`checkout-toast ${toast.type}`} style={{minWidth:'250px'}}>
+                  <div className="toast-left">
+                    <div className={`toast-icon ${toast.type}`}>
+                      {toast.type === "success" ? (
+                        <FiCheckCircle />
+                      ) : (
+                        <FiAlertCircle />
+                      )}
+                    </div>
+                      
+                    <p>{toast.message}</p>
+                  </div>
+                      
+                  <button
+                    className="toast-close"
+                    onClick={() => setToast(null)}
+                  >
+                    <FiX />
+                  </button>
+                </div>
+              )}
+
+              <div className="sidebar-actions">
+
+                <button
+                  type="submit"
+                  className="save-btn"
+                  disabled={loading}
+                >
+
+                  {loading ? (
+                    <>
+                      <span className="btn-spinner"></span>
+                      Enregistrement...
+                    </>
+                  ) : (
+                    "Mettre à jour le produit"
+                  )}
+
+                </button>
+
+                <button
+                  type="button"
+                  className="cancel-btn"
+                >
+                  Annuler
+                </button>
+
+              </div>
+
+            </div>
+
+          </div>
 
         </div>
 
-        {/* SIDEBAR */}
+      </form>
+
+    </div>
+  );
+}
+
+
+/*
+
         <aside className="product-sidebar">
 
           <div className="product-card sidebar-card sticky-sidebar">
@@ -2584,7 +2857,6 @@ export default function EditProductPage() {
 
               </div>
 
-              {/* TOAST */}
               {toast && (
                 <div className={`checkout-toast ${toast.type}`} style={{minWidth:'250px'}}>
                   <div className="toast-left">
@@ -2641,9 +2913,4 @@ export default function EditProductPage() {
           </div>
 
         </aside>
-
-      </form>
-
-    </div>
-  );
-}
+*/

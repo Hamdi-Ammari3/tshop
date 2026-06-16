@@ -3,27 +3,18 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  orderBy,
-} from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import {collection,query,where,getDocs,doc,getDoc,orderBy} from "firebase/firestore";
 import { DB } from "../../../lib/firebaseConfig";
 import ProductCard from "../../components/ProductCard";
-import {
-  FiPhone,
-  FiPackage,
-  FiLoader,
-} from "react-icons/fi";
+import ProductSection from "../../components/ProductSection";
+import {FiPhone,FiPackage,FiLoader,FiArrowLeft} from "react-icons/fi";
 import "./profile.css";
 
 export default function StoreProfilePage() {
 
   const { slug } = useParams();
+  const router = useRouter();
 
   const [store,setStore] = useState(null);
   const [products,setProducts] = useState([]);
@@ -35,15 +26,9 @@ export default function StoreProfilePage() {
 
       try {
 
-        const storeRef = doc(
-          DB,
-          "stores",
-          slug
-        );
+        const storeRef = doc(DB,"stores",slug);
 
-        const storeSnap = await getDoc(
-          storeRef
-        );
+        const storeSnap = await getDoc(storeRef);
 
         if (!storeSnap.exists()) {
 
@@ -61,15 +46,8 @@ export default function StoreProfilePage() {
 
         const productsQuery = query(
           collection(DB,"products"),
-          where(
-            "storeId",
-            "==",
-            storeData.id
-          ),
-          orderBy(
-            "createdAt",
-            "desc"
-          )
+          where("storeId","==",storeData.id),
+          orderBy("createdAt","desc")
         );
 
         const productsSnap =
@@ -133,6 +111,23 @@ export default function StoreProfilePage() {
 
     <main className="store-profile-page">
 
+      {/* TOP */}
+      <div className="product-top">
+
+        <button
+          //href="/"
+          onClick={() => router.back()}
+          className="back-store-btn"
+        >
+
+          <FiArrowLeft />
+
+          Retour
+
+        </button>
+
+      </div>
+
       {/* HEADER */}
       <section className="store-header">
 
@@ -168,9 +163,9 @@ export default function StoreProfilePage() {
 
                 <FiPhone />
 
-                <span>
+                <p>
                   {store.phone}
-                </span>
+                </p>
 
               </div>
 
@@ -180,13 +175,11 @@ export default function StoreProfilePage() {
 
               <FiPackage />
 
-              <span>
+              <p>
 
-                {products.length}
-                {" "}
-                produits
+                {products.length}{" "}produits
 
-              </span>
+              </p>
 
             </div>
 
@@ -199,16 +192,6 @@ export default function StoreProfilePage() {
       {/* PRODUCTS */}
       <section className="store-products">
 
-        <div className="section-header">
-
-          <h2>
-
-            Produits de la boutique
-
-          </h2>
-
-        </div>
-
         {products.length === 0 ? (
 
           <div className="empty-products">
@@ -219,18 +202,10 @@ export default function StoreProfilePage() {
 
         ) : (
 
-          <div className="products-grid">
-
-            {products.map(product => (
-
-              <ProductCard
-                key={product.id}
-                product={product}
-              />
-
-            ))}
-
-          </div>
+          <ProductSection
+            title="Produits de la boutique"
+            products={products}
+          />
 
         )}
 

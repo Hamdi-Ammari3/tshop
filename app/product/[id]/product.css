@@ -433,7 +433,7 @@
 }
 
 /* ACTIONS */
-.product-actions {
+.product-details-actions {
   margin-top: 34px;
   display: flex;
   gap: 14px;
@@ -754,7 +754,7 @@
     margin: 0px;
   }
 
-  .product-actions {
+  .product-details-actions {
     flex-direction: column;
   }
   .add-cart-btn,

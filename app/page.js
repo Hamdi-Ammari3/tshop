@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {getNewProducts,getProductsPage} from '../lib/products';
 import {diversifyProducts} from "../lib/diversifyProducts";
+import { searchProducts } from "../lib/searchProducts";
 import ProductSection from '../app/components/ProductSection';
 import {FiLoader} from "react-icons/fi";
 import {categories} from '../data/categories';
@@ -11,12 +12,15 @@ import {categories} from '../data/categories';
 export default function Home() {
   const router = useRouter();
 
-  const [search, setSearch] = useState("");
   const [newProducts,setNewProducts] = useState([]);
   const [products,setProducts] = useState([]);
   const [lastDoc,setLastDoc] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [loading,setLoading] = useState(true);
+  const [search,setSearch] = useState("");
+  const [searchLoading,setSearchLoading] = useState(false);
+  const [searchResults,setSearchResults] = useState([]);
+  const [hasSearched,setHasSearched] = useState(false);
 
   //Fetch Products
   useEffect(() => {
@@ -79,6 +83,45 @@ export default function Home() {
     
   }, [newProducts]);
 
+  //Search products
+  async function handleSearch() {
+
+    const keyword = search.trim();
+
+    if (!keyword) return;
+
+    try {
+
+      setSearchLoading(true);
+
+      const results = await searchProducts(keyword);
+
+      setSearchResults(results);
+
+      setHasSearched(true);
+
+    } catch(error) {
+
+      console.log(error);
+
+    } finally {
+
+      setSearchLoading(false);
+
+    }
+  }
+
+  //Clear Search
+  function clearSearch() {
+
+    setSearch("");
+
+    setSearchResults([]);
+
+    setHasSearched(false);
+
+  }
+
   if (loading) {
 
     return (
@@ -101,7 +144,24 @@ export default function Home() {
             placeholder="Rechercher un produit..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+
+              if(e.key === "Enter"){
+
+                handleSearch();
+
+              }
+
+            }}
           />
+
+          <button
+            className={`search-btn ${hasSearched ? "clear-btn" : ""}`}
+            disabled={!hasSearched && (!search.trim() || searchLoading)}
+            onClick={hasSearched ? clearSearch : handleSearch}
+          >
+            {searchLoading ? "Recherche..." : hasSearched ? "Effacer" : "Rechercher"}
+          </button>
 
         </div>
 
@@ -138,19 +198,72 @@ export default function Home() {
 
       </section>
 
-      <ProductSection
-        title="🆕 Nouveautés"
-        products={diversifiedNewProducts}
-        horizontal
-        featured
-      />
+      {hasSearched ? (
+
+  <>
+    {searchResults.length > 0 ? (
 
       <ProductSection
-        title={"✨ Pour vous"}
-        products={products}
-        showMore={hasMore}
-        onShowMore={handleLoadMore}
+        title={`Résultats pour "${search}"`}
+        products={searchResults}
       />
+
+    ) : (
+
+      <div className="empty-search">
+
+        <div className="empty-search-icon">
+          🔍
+        </div>
+
+        <h3>
+          Aucun produit trouvé
+        </h3>
+
+        <p>
+          Nous n'avons trouvé aucun produit correspondant à
+          "{search}".
+        </p>
+
+        <button
+          onClick={() => {
+
+            setHasSearched(false);
+
+            setSearch("");
+
+            setSearchResults([]);
+
+          }}
+          className="empty-search-btn"
+        >
+          Voir tous les produits
+        </button>
+
+      </div>
+
+    )}
+  </>
+
+) : (
+
+  <>
+    <ProductSection
+      title="🆕 Nouveautés"
+      products={diversifiedNewProducts}
+      horizontal
+      featured
+    />
+
+    <ProductSection
+      title="✨ Pour vous"
+      products={products}
+      showMore={hasMore}
+      onShowMore={handleLoadMore}
+    />
+  </>
+
+)}
 
     </main>
   );

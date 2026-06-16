@@ -476,7 +476,7 @@
 /* ACTIONS */
 .product-actions {
   display: flex;
-  flex-direction: column;
+
   gap: 6px;
 
   flex-shrink: 0;
@@ -522,6 +522,43 @@
 .action-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.ai-post-btn{
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+
+  padding:8px 14px;
+
+  border:none;
+  border-radius:12px;
+
+  cursor:pointer;
+
+  font-size:14px;
+  font-weight:bold;
+
+  color:#fff;
+
+  background:
+  linear-gradient(
+    135deg,
+    #006de2,
+    #4f8cff
+  );
+
+  box-shadow:
+  0 10px 24px
+  rgba(0,109,226,.20);
+
+  transition:.2s;
+}
+
+.ai-post-btn:hover{
+  transform:translateY(-2px);
 }
 
 /* EXPANDED */

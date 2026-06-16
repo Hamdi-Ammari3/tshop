@@ -722,7 +722,7 @@ export default function ProductPage() {
           </div>
 
           {/* ACTIONS */}
-          <div className="product-actions">
+          <div className="product-details-actions">
 
             <button
               className="add-cart-btn"
@@ -753,14 +753,16 @@ export default function ProductPage() {
 
       </div>
       </>
+          
+      {similarProducts?.length > 0 && (
+        <div className="similar-products">
+          <ProductSection
+            title="Produits similaires"
+            products={similarProducts}
+          />
+        </div>
+      )}
       
-      <div className="similar-products">
-      <ProductSection
-        title="Produits similaires"
-        products={similarProducts}
-      />
-      </div>
-
     </div>
   );
 }

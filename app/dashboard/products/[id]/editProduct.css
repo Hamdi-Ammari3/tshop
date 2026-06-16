@@ -23,14 +23,14 @@
 }
 
 .back-products:hover {
-  color: #111827;
+  color: #000;
 }
 
 /* HEADER */
 .new-product-header h1 {
   font-size: 26px;
   font-weight: 800;
-  color: #111827;
+  color: #000;
   margin: 0px;
 }
 
@@ -42,10 +42,7 @@
 
 /* LAYOUT */
 .product-layout {
-  display: grid;
-  grid-template-columns: minmax(0,1fr) 320px;
-  gap: 24px;
-  align-items: start;
+  padding: 0px 20px;
 }
 
 .product-main-column {
@@ -309,6 +306,63 @@
   justify-content: center;
 
   cursor: pointer;
+}
+
+.categories-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+  gap:16px;
+}
+
+.category-card{
+  border:1px solid #ececec;
+  border-radius:18px;
+  overflow:hidden;
+  background:#fff;
+  cursor:pointer;
+  transition:.25s;
+}
+
+.category-card img{
+  width:100px;
+  height:100px;
+  object-fit:cover;
+}
+
+.category-card span{
+  display:block;
+  padding:12px;
+  font-weight:600;
+}
+
+.category-card:hover{
+  transform:translateY(-3px);
+}
+
+.category-card.active{
+    border:2px solid #facc15;
+}
+
+.subcategories-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+}
+
+.subcategory-card{
+  border:1px solid #ececec;
+  background:#fff;
+  padding:12px 18px;
+  border-radius:999px;
+  cursor:pointer;
+  transition:.2s;
+  font-weight: bold;
+}
+
+.subcategory-card.active{
+    background:#facc15;
+    color:#111;
+    border-color:#facc15;
 }
 
 .upload-box {
@@ -1489,7 +1543,7 @@
 
   line-height: 1.5;
 
-  color: #111827;
+  color: #000;
 }
 
 /* CLOSE */
@@ -1559,22 +1613,17 @@
   color: #ef4444;
 }
 
-
-/* MOBILE */
-@media (max-width: 1100px) {
-
-  .product-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .sticky-sidebar {
-    position: static;
-  }
-
-}
-
 /* MOBILE */
 @media (max-width: 768px) {
+
+  .product-layout {
+    padding: 0px;
+  }
+
+  /* HEADER */
+  .new-product-header h1 {
+    font-size: 18px;
+  }
 
   .new-product-page {
     gap: 20px;
@@ -1599,6 +1648,18 @@
 
   .product-card {
     border-radius: 22px;
+  }
+
+  .categories-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(100px,1fr));
+    gap:10px;
+  }
+
+  .category-card img{
+    width:80px;
+    height:80px;
+    object-fit:cover;
   }
 
   .inventory-grid {

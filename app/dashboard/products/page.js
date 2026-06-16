@@ -6,7 +6,9 @@ import {deleteDoc,doc} from "firebase/firestore";
 import {DB} from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
+import {AIPostDialog} from '../../components/AIPostDialog';
 import {FiEdit2,FiTrash2,FiPlus,FiChevronDown,FiChevronRight,FiLayers,FiArchive,FiBox,FiImage,FiLoader} from "react-icons/fi";
+import { LuSparkles } from "react-icons/lu";
 import "./products.css";
 
 /* TOTAL STOCK */
@@ -37,13 +39,9 @@ function StockBadge({ qty }) {
 
   return (
 
-    <span
-      className={`stock-badge ${tone}`}
-    >
+    <span className={`stock-badge ${tone}`} >
 
-      {qty === 0
-        ? "Rupture"
-        : `${qty}`}
+      {qty === 0 ? "Rupture" : `${qty}`}
 
     </span>
 
@@ -408,6 +406,7 @@ function ProductRow({product}) {
 
   const [open, setOpen] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [aiOpen,setAiOpen] = useState(false);
 
   const hasDetails = !!product.variants?.length || !!product?.lotRules?.lots?.length || !!product.trackInventory;
 
@@ -565,6 +564,14 @@ function ProductRow({product}) {
         {/* ACTIONS */}
         <div className="product-actions">
 
+          <button
+            className="ai-post-btn"
+            onClick={() => setAiOpen(true)}
+          >
+            <LuSparkles />
+            publication AI
+          </button>
+
           <Link
             href={`/dashboard/products/${product.id}`}
             className="action-btn"
@@ -602,6 +609,13 @@ function ProductRow({product}) {
         </div>
 
       )}
+
+      {/* GENERATE POST MODAL */}
+      <AIPostDialog
+        product={product}
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+      />
 
     </div>
 
