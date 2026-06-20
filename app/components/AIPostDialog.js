@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import {FiX,FiCheck,FiImage,FiType,FiMessageSquare} from "react-icons/fi";
+import {FiX,FiCheck,FiImage,FiType,FiMessageSquare,FiCopy} from "react-icons/fi";
 
 import {FaFacebook,FaInstagram} from "react-icons/fa";
 
@@ -12,40 +12,116 @@ import "./AIPostDialog.css";
 
 export function AIPostDialog({product,open,onClose}) {
 
-    const [platform,setPlatform] = useState("facebook");
+    const [language,setLanguage] = useState("ar");
+    const [loading,setLoading] = useState(false);
+    const [result,setResult] = useState(null);
+    const [copied,setCopied] = useState(false);
 
-    const [pieces,setPieces] = useState({image:true,text:true,caption:true});
+    //Generate post
+    async function handleGenerate() {
 
-    if(!open) return null;
+        try {
 
-    function togglePiece(key){
+            setLoading(true);
 
-        const updated = {
-            ...pieces,
-            [key]: !pieces[key],
-        };
+            const response = await fetch("/api/generate-post", {
+                method: "POST",
 
-        const selected = Object.values(updated).filter(Boolean);
+                headers: {
+                    "Content-Type":"application/json",
+                },
 
-        if(selected.length === 0){
-            return;
+                body: JSON.stringify({
+                    product,
+                    language
+                }),
+            });
+
+            const data = await response.json();
+
+            if(data.success){
+
+                setResult(data);
+
+            }
+
+        } catch(error) {
+
+            console.log(error);
+
+        } finally {
+
+            setLoading(false);
+
         }
 
-        setPieces(updated);
+    }
+
+    //Copy the result
+    async function handleCopy() {
+
+        await navigator.clipboard.writeText(result.caption);
+
+        setCopied(true);
+
+        setTimeout(() => {
+
+            setCopied(false);
+
+        }, 2000);
 
     }
+
+    //Close modal
+    function handleClose() {
+
+        setResult(null);
+
+        setLoading(false);
+
+        setLanguage("ar");
+
+        setCopied(false);
+
+        onClose();
+
+    }
+
+    if(!open) return null;
 
     return (
 
         <div
             className="ai-modal-overlay"
-            onClick={onClose}
+            onClick={handleClose}
         >
 
             <div
                 className="ai-modal"
                 onClick={(e) => e.stopPropagation()}
             >
+                
+                {loading && (
+
+                    <div className="ai-loading-overlay">
+
+                        <div className="ai-loading-card">
+
+                            <LuSparkles className="ai-loading-icon" />
+
+                            <h3>
+                                Génération en cours...
+                            </h3>
+
+                            <p>
+                                L'IA prépare votre publication
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                )}
 
                 <div className="ai-modal-header">
 
@@ -70,7 +146,7 @@ export function AIPostDialog({product,open,onClose}) {
 
                         <button
                             className="close-modal-btn"
-                            onClick={onClose}
+                            onClick={handleClose}
                         >
                             <FiX />
                         </button>
@@ -81,159 +157,152 @@ export function AIPostDialog({product,open,onClose}) {
 
                 <div className="ai-modal-content">
 
-                    {/* PRODUCT */}
-                    <div className="ai-product-preview">
+                    {result ? (
 
-                        <img
-                            src={product.thumbnail || product.images?.[0]}
-                            alt={product.name}
-                        />
+                        <div className="ai-result">
 
-                        <div>
+                            <div className="ai-result-card">
 
-                            <h3>
-                                {product.name}
-                            </h3>
+                                <div className="ai-result-header">
 
-                            <p>
-                                {product.category}{" • "}{product.price} TND
-                            </p>
+                                    <div className="ai-result-badge">
+
+                                        ✨ Publication générée
+
+                                    </div>
+
+                                    <button
+                                        className={`copy-btn ${copied ? "copied" : ""}`}
+                                        onClick={handleCopy}
+                                    >
+
+                                        {copied ? (
+                                            <FiCheck size={24}/>
+                                        ) : (
+                                            <FiCopy size={24}/>
+                                        )}
+
+                                    </button>
+
+                                </div>
+
+                                <div
+                                    className="ai-result-content"
+                                    dir={language === "ar" ? "rtl" : "ltr"}
+                                >
+
+                                    <p className="ai-caption">
+                                        {result.caption}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                            <button
+                                className="generate-again-btn"
+                                onClick={() => {setResult(null);}}
+                            >
+
+                                Générer une autre version
+
+                            </button>
 
                         </div>
 
-                    </div>
+                    ) : (
 
-                    {/* PLATFORM */}
-                    <section className="ai-section">
+                        <>
 
-                        <h4 className="ai-section-title">
-                            1. Choisir la plateforme
-                        </h4>
+                            {/* PRODUCT */}
+                            <div className="ai-product-preview">
 
-                        <div className="platform-grid">
-
-                        
-
-                        {/* Facebook */}
-                        <button
-                            type="button"
-                            className={`platform-card ${platform === "facebook" ? "active" : ""}`}
-                            onClick={() => setPlatform("facebook")}
-                        >
-
-                            <div className="platform-overlay facebook"></div>
-
-                            <div className="platform-content">
-
-                                <div className="platform-icon">
-
-                                    <FaFacebook />
-
-                                </div>
+                                <img
+                                    src={product.thumbnail || product.images?.[0]}
+                                    alt={product.name}
+                                />
 
                                 <div>
 
-                                    <h4 className="platform-name">
-                                        Facebook
-                                    </h4>
+                                    <h3>
+                                        {product.name}
+                                    </h3>
+
+                                    <p>
+                                        {product.category} • {product.price} TND
+                                    </p>
 
                                 </div>
 
                             </div>
 
-                        </button>
+                            <section className="ai-section">
 
-                        {/* Instagram */}
-                        <button
-                            type="button"
-                            className={`platform-card ${ platform === "instagram" ? "active" : ""}`}
-                            onClick={() => setPlatform("instagram")}
-                        >
+                                <h4 className="ai-section-title">
+                                    Choisir la langue
+                                </h4>
 
-                            <div className="platform-overlay instagram"></div>
+                                <div className="platform-grid">
 
-                            <div className="platform-content">
+                                    <button
+                                        type="button"
+                                        className={`platform-card ${language === "fr" ? "active" : ""}`}
+                                        onClick={() => setLanguage("fr")}
+                                    >
+                                        <div className="platform-content">
+                                            <h4 className="platform-name">
+                                                Français
+                                            </h4>
+                                        </div>
+                                    </button>
 
-                                <div className="platform-icon">
-
-                                    <FaInstagram />
+                                    <button
+                                        type="button"
+                                        className={`platform-card ${language === "ar" ? "active" : ""}`}
+                                        onClick={() => setLanguage("ar")}
+                                    >
+                                        <div className="platform-content" style={{justifyContent:'flex-end'}}>
+                                            <h4 className="platform-name">
+                                             العربية
+                                            </h4>
+                                        </div>
+                                    </button>
 
                                 </div>
 
-                                <div>
+                            </section>
 
-                                    <h4 className="platform-name">
-                                        Instagram
-                                    </h4>
+                        </>
 
-                                </div>
+                    )}
 
-                            </div>
+                </div>
 
-                        </button>
+                {!result && (
+                <div className="ai-modal-footer">
 
-                    </div>
+                    <button
+                        className="cancel-ai-btn"
+                        onClick={handleClose}
+                    >
+                        Annuler
+                    </button>
 
-                </section>
+                    <button
+                        className="generate-ai-btn"
+                        onClick={handleGenerate}
+                        disabled={loading}
+                    >
 
-                {/* PIECES */}
-                <section className="ai-section">
+                        <LuSparkles />
+                        {loading ? "Génération..." : "Générer le post"}
 
-                    <h4 className="ai-section-title">
-                        2. Que souhaitez-vous générer ?
-                    </h4>
+                    </button>
 
-                    <div className="pieces-list">
-
-                        <PieceCard
-                            icon={<FiImage />}
-                            title="Image publicitaire"
-                            active={pieces.image}
-                            onClick={() => togglePiece("image")}
-                        />
-
-                        <PieceCard
-                            icon={<FiType />}
-                            title="Texte principal"
-                            active={pieces.text}
-                            onClick={() => togglePiece("text")}
-                        />
-
-                        <PieceCard
-                            icon={<FiMessageSquare />}
-                            title="Légende / Hashtags"
-                            active={pieces.caption}
-                            onClick={() => togglePiece("caption")}
-                        />
-
-                    </div>
-
-                </section>
+                </div>
+                )}
 
             </div>
-
-            <div className="ai-modal-footer">
-
-                <button
-                    className="cancel-ai-btn"
-                    onClick={onClose}
-                >
-                    Annuler
-                </button>
-
-                <button
-                    className="generate-ai-btn"
-                >
-
-                    <LuSparkles />
-
-                    Générer le post
-
-                </button>
-
-            </div>
-
-        </div>
 
         </div>
 
@@ -241,6 +310,7 @@ export function AIPostDialog({product,open,onClose}) {
 
 }
 
+/*
 function PieceCard({icon,title,active,onClick}) {
 
     return (
@@ -281,3 +351,135 @@ function PieceCard({icon,title,active,onClick}) {
     );
 
 }
+    */
+
+/*
+<div className="ai-modal-content">
+
+                    <div className="ai-product-preview">
+
+                        <img
+                            src={product.thumbnail || product.images?.[0]}
+                            alt={product.name}
+                        />
+
+                        <div>
+
+                            <h3>
+                                {product.name}
+                            </h3>
+
+                            <p>
+                                {product.category}{" • "}{product.price} TND
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <section className="ai-section">
+
+                        <h4 className="ai-section-title">
+                            1. Choisir la plateforme
+                        </h4>
+
+                        <div className="platform-grid">
+                        
+                        <button
+                            type="button"
+                            className="platform-card active"
+                        >
+
+                            <div className="platform-overlay facebook"></div>
+
+                            <div className="platform-content">
+
+                                <div className="platform-icon">
+
+                                    <FaFacebook />
+
+                                </div>
+
+                                <div>
+
+                                    <h4 className="platform-name">
+                                        Facebook
+                                    </h4>
+
+                                </div>
+
+                            </div>
+
+                        </button>
+
+                        <button
+                            type="button"
+                            className="platform-card active"
+                        >
+
+                            <div className="platform-overlay instagram"></div>
+
+                            <div className="platform-content">
+
+                                <div className="platform-icon">
+
+                                    <FaInstagram />
+
+                                </div>
+
+                                <div>
+
+                                    <h4 className="platform-name">
+                                        Instagram
+                                    </h4>
+
+                                </div>
+
+                            </div>
+
+                        </button>
+
+                    </div>
+
+                    </section>
+
+                
+
+                </div>
+*/
+
+/*
+ //PIECES
+                <section className="ai-section">
+
+                    <h4 className="ai-section-title">
+                        2. Que souhaitez-vous générer ?
+                    </h4>
+
+                    <div className="pieces-list">
+
+                        <PieceCard
+                            icon={<FiImage />}
+                            title="Image publicitaire"
+                            active={pieces.image}
+                            onClick={() => togglePiece("image")}
+                        />
+
+                        <PieceCard
+                            icon={<FiType />}
+                            title="Texte principal"
+                            active={pieces.text}
+                            onClick={() => togglePiece("text")}
+                        />
+
+                        <PieceCard
+                            icon={<FiMessageSquare />}
+                            title="Légende / Hashtags"
+                            active={pieces.caption}
+                            onClick={() => togglePiece("caption")}
+                        />
+
+                    </div>
+
+                </section>
+*/
