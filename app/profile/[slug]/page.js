@@ -128,60 +128,90 @@ export default function StoreProfilePage() {
 
       </div>
 
-      {/* HEADER */}
-      <section className="store-header">
+      <section className="store-hero">
 
-        <div className="store-header-card">
+        {/* CARD */}
+        <div className="store-profile-card">
 
-          {store.logo ? (
+          {/* LOGO */}
+          <div className="store-logo-wrapper">
 
-            <img
-              src={store.logo}
-              alt={store.name}
-              className="store-profile-logo"
-            />
+            {store.logo ? (
 
-          ) : (
+              <img
+                src={store.logo}
+                alt={store.name}
+                className="store-logo"
+              />
 
-            <div className="store-profile-avatar">
+            ) : (
 
-              {store.name?.charAt(0)}
+              <div className="store-logo-placeholder">
 
-            </div>
-
-          )}
-
-          <div className="store-header-info">
-
-            <h1>
-              {store.name}
-            </h1>
-
-            {store.phone && (
-
-              <div className="store-meta">
-
-                <FiPhone />
-
-                <p>
-                  {store.phone}
-                </p>
+                {store.name?.charAt(0)}
 
               </div>
 
             )}
 
-            <div className="store-meta">
+          </div>
 
-              <FiPackage />
+          {/* INFO */}
+          <div className="store-main-info">
 
-              <p>
+            <h1>
+              {store.name}
+            </h1>
 
-                {products.length}{" "}produits
+            <div className="store-stats">
 
-              </p>
+              <div className="store-stat">
+
+                <FiPackage />
+
+                <span>
+
+                  {products.length} produits
+
+                </span>
+
+              </div>
+
+              {store.phone && (
+
+                <div className="store-stat">
+
+                  <FiPhone />
+
+                  <span>
+                    {store.phone}
+                  </span>
+
+                </div>
+
+              )}
 
             </div>
+
+          </div>
+
+          {/* ACTIONS */}
+          <div className="store-actions">
+
+            {store.hasWhatsapp && (
+
+              <a
+                href={`https://wa.me/${store.phone}`}
+                target="_blank"
+                rel="noreferrer"
+                className="whatsapp-btn"
+              >
+
+                WhatsApp
+
+              </a>
+
+            )}
 
           </div>
 

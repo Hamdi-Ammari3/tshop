@@ -13,158 +13,134 @@ import { FiArrowLeft, FiUpload, FiCheck, FiShoppingBag,FiX,FiAlertCircle } from 
 import "./onboarding.css";
 
 export default function Onboarding() {
-    const router = useRouter();
-    const { user, loading: authLoading } = useAuth();
-    const { setStore,setLoading  } = useStore();
+  const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const { setStore,setLoading  } = useStore();
 
-    const logoInputRef = useRef(null);
+  const logoInputRef = useRef(null);
 
-    const [name, setName] = useState("");
-    const [phone, setPhone] = useState("");
-    const [hasWhatsapp, setHasWhatsapp] = useState(true);
-    const [logo, setLogo] = useState(null);
-    const [uploadProgress, setUploadProgress] = useState(0);
-    const [checkingSlug, setCheckingSlug] = useState(false);
-    const [slugAvailable, setSlugAvailable] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [toast, setToast] = useState(null);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [hasWhatsapp, setHasWhatsapp] = useState(true);
+  const [logo, setLogo] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [checkingSlug, setCheckingSlug] = useState(false);
+  const [slugAvailable, setSlugAvailable] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
 
-    useEffect(() => {
-        async function checkExistingStore() {
-            if (!user) return;
+  useEffect(() => {
+    async function checkExistingStore() {
+      if (!user) return;
 
-            try {
-                const userRef = doc(DB, "users", user.uid);
-                const userSnap = await getDoc(userRef);
+      try {
+        const userRef = doc(DB, "users", user.uid);
+        const userSnap = await getDoc(userRef);
 
-                if (userSnap.exists() && userSnap.data()?.storeId) {
-                    router.push("/dashboard");
-                }
-
-            } catch (error) {
-                console.log(error);
-            }
+        if (userSnap.exists() && userSnap.data()?.storeId) {
+          router.push("/dashboard");
         }
 
-        checkExistingStore();
+      } catch (error) {
+        console.log(error);
+      }
+    }
 
-    }, [user, router]);
+    checkExistingStore();
 
-    const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }, [user, router]);
 
-    /* CHECK SLUG */
-    useEffect(() => {
-        async function checkSlug() {
+  const slug = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 
-            if (!slug || slug.length < 3) {
-                setSlugAvailable(false);
-                return;
-            }
+  //CHECK SLUG
+  useEffect(() => {
+    async function checkSlug() {
 
-            const reservedSlugs = [
-                "admin",
-                "dashboard",
-                "login",
-                "api",
-                "support",
-                "tunishop",
-            ];
+      if (!slug || slug.length < 3) {
+        setSlugAvailable(false);
+        return;
+      }
 
-            if (reservedSlugs.includes(slug)) {
-                setSlugAvailable(false);
-                return;
-            }
+      const reservedSlugs = [
+        "admin",
+        "dashboard",
+        "login",
+        "api",
+        "support",
+        "tunishop",
+      ];
 
-            try {
-                setCheckingSlug(true);
-                const storeRef = doc(DB, "stores", slug);
-                const storeSnap = await getDoc(storeRef);
-                setSlugAvailable(!storeSnap.exists());
-            } catch (error) {
-                console.log(error);
-            } finally {
-                setCheckingSlug(false);
-            }
-        }
+      if (reservedSlugs.includes(slug)) {
+        setSlugAvailable(false);
+        return;
+      }
 
-        const timer = setTimeout(() => {
-            checkSlug();
-        }, 500);
+      try {
+        setCheckingSlug(true);
+        const storeRef = doc(DB, "stores", slug);
+        const storeSnap = await getDoc(storeRef);
+        setSlugAvailable(!storeSnap.exists());
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setCheckingSlug(false);
+      }
+    }
 
-        return () => clearTimeout(timer);
+    const timer = setTimeout(() => {
+      checkSlug();
+    }, 500);
 
-    }, [slug]);
+    return () => clearTimeout(timer);
 
-const handleImageChange = (e) => {
+  }, [slug]);
 
-  const file =
-    e.target.files?.[0];
+  //Handle image change
+  const handleImageChange = (e) => {
 
-  if (!file) {
-    return;
-  }
+    const file = e.target.files?.[0];
 
-  if (
-    !file.type.startsWith(
-      "image/"
-    )
-  ) {
+    if (!file) {
+      return;
+    }
 
-    showToast(
-      "Veuillez sélectionner une image"
-    );
+    if (!file.type.startsWith("image/")) {
 
-    return;
-  }
+      showToast("Veuillez sélectionner une image");
 
-  if (
-    logo?.preview?.startsWith(
-      "blob:"
-    )
-  ) {
+      return;
+    }
 
-    URL.revokeObjectURL(
-      logo.preview
-    );
+    if (logo?.preview?.startsWith("blob:")) {
 
-  }
-
-  const preview =
-    URL.createObjectURL(
-      file
-    );
-
-  setLogo({
-    file,
-    preview,
-  });
-
-  e.target.value = "";
-
-};
-
-useEffect(() => {
-
-  return () => {
-
-    if (
-      logo?.preview?.startsWith(
-        "blob:"
-      )
-    ) {
-
-      URL.revokeObjectURL(
-        logo.preview
-      );
+      URL.revokeObjectURL(logo.preview);
 
     }
 
+    const preview = URL.createObjectURL(file);
+
+    setLogo({file,preview});
+
+    e.target.value = "";
+
   };
 
-}, []);
+  useEffect(() => {
+
+    return () => {
+
+      if (logo?.preview?.startsWith("blob:")) {
+
+        URL.revokeObjectURL(logo.preview);
+
+      }
+
+    };
+
+  }, []);
 
   //Remove logo
-const removeLogo = () => {
+  const removeLogo = () => {
 
   if (
     logo?.preview?.startsWith(
@@ -305,6 +281,7 @@ const removeLogo = () => {
                 },
                 ownerId: currentUser.uid,
                 shipping_fee: Number(8),
+                aiPostsCount: 0,
                 createdAt,
             });
 
@@ -341,6 +318,7 @@ const removeLogo = () => {
                     startedAt: createdAt,
                     expiresAt,
                 },
+                aiPostsCount: 0,
                 createdAt,
             });
 
