@@ -32,9 +32,11 @@ export function AIPostDialog({product,open,onClose}) {
                 },
 
                 body: JSON.stringify({
-                    product,
+                    name: product.name,
+                    category: product.category,
+                    description: product.description,
                     language,
-                    storeId: product.storeId,
+                    storeId: product.storeSlug,
                 }),
             });
 
@@ -108,7 +110,11 @@ export function AIPostDialog({product,open,onClose}) {
 
                         <div className="ai-loading-card">
 
-                            <LuSparkles className="ai-loading-icon" />
+                            <div className="ai-loading-animation">
+
+                                <LuSparkles className="ai-loading-icon" />
+
+                            </div>
 
                             <h3>
                                 Génération en cours...
@@ -117,6 +123,14 @@ export function AIPostDialog({product,open,onClose}) {
                             <p>
                                 L'IA prépare votre publication
                             </p>
+
+                            <div className="ai-loading-dots">
+
+                                <span></span>
+                                <span></span>
+                                <span></span>
+
+                            </div>
 
                         </div>
 
