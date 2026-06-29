@@ -12,6 +12,13 @@ import { ClipLoader } from "react-spinners";
 import {FiLoader} from "react-icons/fi";
 import "./dashboard.css";
 
+import {
+  collection,
+  getDocs,
+  writeBatch,
+} from "firebase/firestore";
+import { DB } from "../../lib/firebaseConfig";
+
 export default function DashboardHome() {
 
   const {store,loading: storeLoading} = useStore();
@@ -83,8 +90,7 @@ export default function DashboardHome() {
         </h2>
 
         <p>
-          Créez votre boutique pour
-          commencer à vendre en ligne.
+          Créez votre boutique pour commencer à vendre en ligne.
         </p>
 
         <button
@@ -107,76 +113,35 @@ export default function DashboardHome() {
     );
   }
 
-  /* SUBSCRIPTION */
-  const startedAt =
-    store.subscription?.startedAt?.toDate
-      ? store.subscription.startedAt.toDate()
-      : new Date(
-          store.subscription?.startedAt
-        );
+  //ORDER QUOTA
+  const ordersQuota = Number(store?.ordersQuota ?? 100);
 
-  const expiresAt =
-    store.subscription?.expiresAt?.toDate
-      ? store.subscription.expiresAt.toDate()
-      : new Date(
-          store.subscription?.expiresAt
-        );
+  const ordersLeft = Math.max(0,ordersQuota - (Array.isArray(orders) ? orders.length : 0));
 
-  const now = new Date();
+  let quotaClass = "safe";
 
-  const totalDays = Math.max(
-    1,
-    Math.ceil(
-      (expiresAt - startedAt) /
-      (1000 * 60 * 60 * 24)
-    )
-  );
+  if (ordersLeft <= 10) {
+    quotaClass = "danger";
+  } else if (ordersLeft <= 30) {
+    quotaClass = "warning";
+  }
 
-  const daysLeft = Math.max(
-    0,
-    Math.ceil(
-      (expiresAt - now) /
-      (1000 * 60 * 60 * 24)
-    )
-  );
+  const quotaPercentage = Math.min(100,(ordersLeft / ordersQuota) * 100);
 
-  const progress = Math.min(
-    100,
-    Math.max(
-      0,
-      ((totalDays - daysLeft) /
-        totalDays) *
-        100
-    )
-  );
-
-  const subscriptionClass =
-    daysLeft <= 3
-      ? "danger"
-      : daysLeft <= 7
-      ? "warning"
-      : "safe";
-
-  /* STATS */
+  // STATS
   const stats = [
     {
       icon: FiBox,
       label: "Produits",
       value: products.length,
-      hint:
-        products.length > 0
-          ? "Produits en ligne"
-          : "Aucun produit",
+      hint: products.length > 0 ? "Produits en ligne" : "Aucun produit",
     },
 
     {
       icon: FiShoppingBag,
       label: "Commandes",
       value: orders.length,
-      hint:
-        pendingOrders.length > 0
-          ? `${pendingOrders.length} en attente`
-          : "Aucune commande en attente",
+      hint: pendingOrders.length > 0 ? `${pendingOrders.length} en attente` : "Aucune commande en attente",
     },
 
     {
@@ -192,7 +157,7 @@ export default function DashboardHome() {
   const copyStoreUrl = isLocalhost ? `${window.location.origin}/store/${store.slug}` : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
 
   /* COPY */
-  const copyStoreLink = async () => {
+  const copyStoreLinkk = async () => {
     try {
       await navigator.clipboard.writeText(copyStoreUrl);
       setCopied(true);
@@ -204,6 +169,46 @@ export default function DashboardHome() {
       console.log(error);
     }
   };
+
+  const copyStoreLink = async () => {
+
+    try {
+
+      const snapshot = await getDocs(
+        collection(DB, "stores")
+      );
+
+      const batch = writeBatch(DB);
+
+      snapshot.forEach((docSnap) => {
+
+  const data = docSnap.data();
+
+  if (data.ordersQuota === undefined) {
+
+    batch.update(docSnap.ref, {
+      ordersQuota: 100,
+    });
+
+  }
+
+});
+
+      await batch.commit();
+
+      console.log(`${snapshot.size} stores updated successfully.`)
+
+    } catch (error) {
+
+      console.error(error);
+
+    } finally {
+
+      console.error('done');
+
+    }
+
+  }
 
   return (
     <div className="dashboard-home">
@@ -224,29 +229,21 @@ export default function DashboardHome() {
 
           <div className="subscription-inline">
 
-            <div
-              className={`subscription-pill ${subscriptionClass}`}
-            >
-
-              {store.subscription?.plan === "free"
-                ? "Essai gratuit"
-                : store.subscription?.plan}
-
+            <div className={`subscription-pill ${quotaClass}`}>
+              Quota commandes
             </div>
 
             <div className="subscription-inline-progress">
 
               <div
-                className={`subscription-inline-fill ${subscriptionClass}`}
-                style={{
-                  width: `${progress}%`,
-                }}
+                className={`subscription-inline-fill ${quotaClass}`}
+                style={{width: `${quotaPercentage}%`,}}
               />
 
             </div>
 
             <div className="subscription-inline-days">
-              {daysLeft} jours
+              {ordersLeft} restantes
             </div>
 
           </div>
@@ -524,3 +521,32 @@ export default function DashboardHome() {
     </div>
   );
 }
+
+/*
+<div className="subscription-inline">
+
+            <div className={`subscription-pill ${subscriptionClass}`} >
+
+              {store.subscription?.plan === "free"
+                ? "Essai gratuit"
+                : store.subscription?.plan}
+
+            </div>
+
+            <div className="subscription-inline-progress">
+
+              <div
+                className={`subscription-inline-fill ${subscriptionClass}`}
+                style={{
+                  width: `${progress}%`,
+                }}
+              />
+
+            </div>
+
+            <div className="subscription-inline-days">
+              {daysLeft} jours
+            </div>
+
+          </div>
+*/

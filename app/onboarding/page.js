@@ -142,268 +142,244 @@ export default function Onboarding() {
   //Remove logo
   const removeLogo = () => {
 
-  if (
-    logo?.preview?.startsWith(
-      "blob:"
-    )
-  ) {
+    if (logo?.preview?.startsWith("blob:")) {
 
-    URL.revokeObjectURL(
-      logo.preview
-    );
+      URL.revokeObjectURL(logo.preview);
 
-  }
-
-  setLogo(null);
-
-};
-
-
-    //Toast message
-    const showToast = (message,type = "error") => {
-        setToast({message,type,});
-
-        setTimeout(() => {
-            setToast(null);
-        }, 3500);
-    };
-
-    const tunisianPhoneRegex = /^(2|4|5|9)\d{7}$/;
-
-    //Submit form
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-
-        if (!name.trim()) {
-            showToast("Store name required");
-            return;
-        }
-
-        if (name.trim().length < 3) {
-            showToast("Store name must be 3 character min");
-            return;
-        }
-
-        if (!slugAvailable) {
-            showToast("Store URL already taken");
-            return;
-        }
-
-        if (!tunisianPhoneRegex.test(phone)) {
-            showToast("Enter a valid Tunisian phone number");
-            return;
-        }
-
-        try {
-            setSubmitting(true);
-
-            /* LOGIN */
-            let currentUser = user;
-
-            if (!currentUser) {
-                currentUser = await signInWithGoogle();
-            }
-
-            /* USER REF */
-            const userRef = doc(DB, "users", currentUser.uid);
-
-            const userSnap = await getDoc(userRef);
-
-            /* EXISTING STORE */
-            if (userSnap.exists() && userSnap.data()?.storeId) {
-
-                showToast("You already have a store. Redirecting to your dashboard...","info");
-
-                setTimeout(() => {
-                    router.push("/dashboard");
-                }, 1800);
-
-                return;
-            }
-
-            /* UPLOADS */
-            let logoUrl = "";
-
-            if (logo) {
-
-  const url =
-    await uploadToCloudinary(
-      logo.file,
-      (percent) => {
-
-        setUploadProgress(
-          Math.round(percent)
-        );
-
-      }
-    );
-
-  logoUrl =
-    url.replace(
-      "/upload/",
-      "/upload/f_webp,q_auto,w_1200/"
-    );
-
-}
-
-            const createdAt = new Date();
-
-            const expiresAt = new Date();
-            expiresAt.setMonth(expiresAt.getMonth() + 1);
-
-            const existingStore = await getDoc(
-                doc(DB, "stores", slug)
-            );
-
-            if (existingStore.exists()) {
-                showToast("Nom déjà utilisé");
-                setSubmitting(false);
-                return;
-            }
-
-            /* CREATE STORE */
-            await setDoc(doc(DB, "stores", slug), {
-                name: name.trim(),
-                phone,
-                hasWhatsapp,
-                slug,
-                logo: logoUrl,
-                rating: {
-                    average: 0,
-                    count: 0,
-                    total: 0,
-                },
-                subscription: {
-                    plan: "free",
-                    status: "active",
-                    startedAt: createdAt,
-                    expiresAt,
-                },
-                ownerId: currentUser.uid,
-                shipping_fee: Number(8),
-                aiPostsCount: 0,
-                createdAt,
-            });
-
-            /* SAVE / UPDATE USER */
-            if (userSnap.exists()) {
-                await setDoc(userRef,{storeId: slug} , { merge: true });
-            } else {
-                await setDoc(userRef, {
-                    name: currentUser.displayName || "",
-                    email: currentUser.email || "",
-                    storeId: slug,
-                    createdAt: new Date(),
-                });
-            }
-
-            /* INSTANT STORE HYDRATION */
-            setStore({
-                id: slug,
-                name: name.trim(),
-                phone,
-                hasWhatsapp,
-                slug,
-                logo: logoUrl,
-                rating: {
-                    average: 0,
-                    count: 0,
-                    total: 0,
-                },
-                ownerId: currentUser.uid,
-                shipping_fee: Number(8),
-                subscription: {
-                    plan: "free",
-                    status: "active",
-                    startedAt: createdAt,
-                    expiresAt,
-                },
-                aiPostsCount: 0,
-                createdAt,
-            });
-
-            setLogo((prev) => ({
-              ...prev,
-            }));
-
-            setLoading(false);
-
-            /* REDIRECT */
-            //router.push("/dashboard");
-            router.replace("/dashboard");
-
-        } catch (err) {
-            console.error(err);
-            showToast("Something went wrong");
-            setLogo((prev) => {
-
-  if (!prev) {
-    return null;
-  }
-
-  return {
-    ...prev,
-  };
-
-});
-        } finally {
-          setSubmitting(false);
-          setUploadProgress(0)
-        }
-    };
-
-    if (authLoading) {
-        return (
-            <div className="onboarding-loading">
-                Chargement...
-            </div>
-        );
     }
 
+    setLogo(null);
+
+  };
+
+
+  //Toast message
+  const showToast = (message,type = "error") => {
+    setToast({message,type,});
+
+    setTimeout(() => {
+      setToast(null);
+    }, 3500);
+  };
+
+  const tunisianPhoneRegex = /^(2|4|5|9)\d{7}$/;
+
+  //Submit form
+  const handleSubmit = async (e) => {
+
+    e.preventDefault();
+
+    if (!name.trim()) {
+      showToast("Store name required");
+      return;
+    }
+
+    if (name.trim().length < 3) {
+      showToast("Store name must be 3 character min");
+      return;
+    }
+
+    if (!slugAvailable) {
+      showToast("Store URL already taken");
+      return;
+    }
+
+    if (!tunisianPhoneRegex.test(phone)) {
+      showToast("Enter a valid Tunisian phone number");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+
+      let currentUser = user;
+
+      if (!currentUser) {
+        currentUser = await signInWithGoogle();
+      }
+
+      /* USER REF */
+      const userRef = doc(DB, "users", currentUser.uid);
+
+      const userSnap = await getDoc(userRef);
+
+      /* EXISTING STORE */
+      if (userSnap.exists() && userSnap.data()?.storeId) {
+
+        showToast("You already have a store. Redirecting to your dashboard...","info");
+
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1800);
+
+        return;
+      }
+
+      /* UPLOADS */
+      let logoUrl = "";
+
+      if (logo) {
+
+        const url = await uploadToCloudinary(logo.file,(percent) => {
+
+          setUploadProgress(Math.round(percent));
+
+        });
+
+        logoUrl = url.replace("/upload/","/upload/f_webp,q_auto,w_1200/");
+
+      }
+
+      const createdAt = new Date();
+
+      const existingStore = await getDoc(
+        doc(DB, "stores", slug)
+      );
+
+      if (existingStore.exists()) {
+        showToast("Nom déjà utilisé");
+        setSubmitting(false);
+        return;
+      }
+
+      /* CREATE STORE */
+      await setDoc(doc(DB, "stores", slug), {
+        name: name.trim(),
+        phone,
+        hasWhatsapp,
+        slug,
+        logo: logoUrl,
+        ownerId: currentUser.uid,
+        shipping_fee: Number(8),
+
+        rating: {
+          average: 0,
+          count: 0,
+          total: 0,
+        },
+
+        aiPostsCount: 0,
+
+        ordersQuota:100,
+                
+        createdAt,
+      });
+
+      /* SAVE / UPDATE USER */
+      if (userSnap.exists()) {
+        await setDoc(userRef,{storeId: slug} , { merge: true });
+      } else {
+        await setDoc(userRef, {
+          name: currentUser.displayName || "",
+          email: currentUser.email || "",
+          storeId: slug,
+          createdAt: new Date(),
+        });
+      }
+
+      /* INSTANT STORE HYDRATION */
+      setStore({
+        id: slug,
+        name: name.trim(),
+        phone,
+        hasWhatsapp,
+        slug,
+        logo: logoUrl,
+        ownerId: currentUser.uid,
+        shipping_fee: Number(8),
+
+        rating: {
+          average: 0,
+          count: 0,
+          total: 0,
+        },
+
+        aiPostsCount: 0,
+
+        ordersQuota:100,
+                            
+        createdAt,
+      });
+
+      setLogo((prev) => ({
+        ...prev,
+      }));
+
+      setLoading(false);
+
+      router.replace("/dashboard");
+
+    } catch (err) {
+      console.error(err);
+      showToast("Something went wrong");
+      setLogo((prev) => {
+
+        if (!prev) {
+          return null;
+        }
+
+        return {
+          ...prev,
+        };
+
+      });
+    } finally {
+      setSubmitting(false);
+      setUploadProgress(0)
+    }
+  };
+
+  if (authLoading) {
     return (
-        <div className="onboarding">
+      <div className="onboarding-loading">
+        Chargement...
+      </div>
+    );
+  }
 
-  {/* TOP */}
-  <div className="onboarding-top">
+  return (
+    <div className="onboarding">
 
-    <Link
-      href="/"
-      className="back-btn"
-    >
-      <FiArrowLeft />
-      Retour
-    </Link>
+      {/* TOP */}
+      <div className="onboarding-top">
 
-  </div>
-
-  <div className="onboarding-container">
-
-    {/* FORM */}
-    <div className="onboarding-form">
-
-      <h1>
-        Créez votre boutique
-      </h1>
-
-      <p>
-        Lancez votre boutique en ligne
-        en moins d’une minute.
-      </p>
-
-      {/* BENEFITS */}
-      <div className="onboarding-benefits">
-
-        <div>
-          <FiCheck />
-          Gratuit pendant 30 jours
-        </div>
-
-        <div>
-          <FiCheck />
-          Boutique prête immédiatement
-        </div>
+        <Link
+          href="/"
+          className="back-btn"
+        >
+          <FiArrowLeft />
+          Retour
+        </Link>
 
       </div>
+
+      <div className="onboarding-container">
+
+        {/* FORM */}
+        <div className="onboarding-form">
+
+          <h1>
+            Créez votre boutique
+          </h1>
+
+          <p>
+            Lancez votre boutique en ligne en moins d’une minute.
+          </p>
+
+          {/* BENEFITS */}
+          <div className="onboarding-benefits">
+
+            <div>
+              <FiCheck />
+              Gratuit pendant 30 jours
+            </div>
+
+            <div>
+              <FiCheck />
+              Boutique prête immédiatement
+            </div>
+
+          </div>
 
       <form onSubmit={handleSubmit}>
 

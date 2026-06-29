@@ -565,7 +565,7 @@ export default function NewProductPage() {
       }
     }
 
-    if (trackInventory && !hasVariants) {
+    if (trackInventory && !variantRows.length > 0) {
 
       if (!inventory ||Number(inventory) <= 0) {
 
@@ -575,8 +575,25 @@ export default function NewProductPage() {
       }
     }
 
+    /* VALIDATE VARIANT STRUCTURE */
+    if (variantOptions.length > 0) {
+
+      const invalidOption = variantOptions.find((option) => !option.name.trim() || option.values.filter((value) => value.trim()).length === 0);
+
+      if (invalidOption) {
+        showToast("Chaque variante doit avoir un nom et au moins une valeur.");
+        return;
+      }
+
+      if (variantRows.length === 0) {
+        showToast("Ajoutez au moins une combinaison de variantes.");
+        return;
+      }
+
+    }
+
     // VALIDATE VARIANTS
-    if (hasVariants) {
+    if (variantRows.length > 0) {
 
       for (const variant of variantRows) {
 
@@ -599,6 +616,11 @@ export default function NewProductPage() {
 
         if (variant.hasDiscount && Number(variant.oldPrice) <= Number(variant.price)) {
           showToast("Le prix promotionnel doit être inférieur au prix original.");
+          return;
+        }
+
+        if (trackInventory && Number(variant.inventory) <= 0) {
+          showToast("Chaque variante doit avoir un stock supérieur à 0.");
           return;
         }
       }
@@ -694,16 +716,16 @@ export default function NewProductPage() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         trackInventory,
-        inventory: hasVariants ? variantRows.reduce((sum,variant) => sum + Number(variant.inventory || 0), 0) : Number(inventory || 0),
-        hasVariants,
-        options: hasVariants ? variantOptions
+        inventory: variantRows.length > 0 ? variantRows.reduce((sum,variant) => sum + Number(variant.inventory || 0), 0) : Number(inventory || 0),
+        hasVariants: variantRows.length > 0,
+        options: variantRows.length > 0 ? variantOptions
           .filter((option) => option.name.trim())
           .map((option) => ({
             name: option.name.trim(),
             values: option.values.filter((value) => value.trim()),
           })) : [],
 
-        variants: hasVariants ? uploadedVariants.map((variant) => ({
+        variants: variantRows.length > 0 ? uploadedVariants.map((variant) => ({
           id: variant.id,
 
           variantKey: variant.options
@@ -1230,7 +1252,7 @@ export default function NewProductPage() {
 
                   <small>
 
-                    {hasVariants
+                    {variantRows.length > 0
                       ? "Chaque variante possède son propre stock ci-dessous."
                       : "Nombre total de pièces disponibles à la vente."}
 
@@ -1420,6 +1442,7 @@ export default function NewProductPage() {
                         >
 
                           <FiPlus />
+                          Ajouter
 
                         </button>
 

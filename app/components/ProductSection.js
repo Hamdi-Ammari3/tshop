@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import ProductCard from "./ProductCard";
 import { MdArrowBackIosNew,MdArrowForwardIos } from "react-icons/md";
-import { FiPackage } from "react-icons/fi";
 
 export default function ProductSection({title,products,showMore,onShowMore,horizontal = false,featured}) {
 
