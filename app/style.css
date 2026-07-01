@@ -308,20 +308,21 @@ body {
 
 .search-box input {
   width: 100%;
-  height: 54px;
+  height: 50px;
   border: 1px solid #e2e8f0;
-  border-radius: 999px;
+  border-radius: 15px;
   padding: 0 20px;
   font-size: 15px;
   background: white;
 }
 
 .search-btn{
+  height:50px;
   min-width:140px;
 
   border:none;
 
-  border-radius:999px;
+  border-radius:15px;
 
   background:#2563eb;
 
@@ -698,11 +699,11 @@ body {
   }
 
   .search-box{
-    flex-direction:column;
+    gap:6px;
   }
 
   .search-btn{
-    height:52px;
+    min-width:100px;
   }
 
   .categories-scroll {

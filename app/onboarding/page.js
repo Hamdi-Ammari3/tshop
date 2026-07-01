@@ -363,7 +363,7 @@ export default function Onboarding() {
           </h1>
 
           <p>
-            Lancez votre boutique en ligne en moins d’une minute.
+            Créez votre boutique gratuitement et commencez à vendre dès aujourd'hui.
           </p>
 
           {/* BENEFITS */}
@@ -371,12 +371,12 @@ export default function Onboarding() {
 
             <div>
               <FiCheck />
-              Gratuit pendant 30 jours
+              Boutique prête immédiatement
             </div>
 
             <div>
               <FiCheck />
-              Boutique prête immédiatement
+              Payez uniquement lorsque vous vendez
             </div>
 
           </div>
