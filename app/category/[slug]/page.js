@@ -6,8 +6,7 @@ import Link from "next/link";
 import {getCategoryProducts} from "../../../lib/products";
 import ProductSection from '../../components/ProductSection';
 import {categories} from '../../../data/categories';
-import {FiLoader,FiArrowLeft} from "react-icons/fi";
-import { MdArrowBack } from "react-icons/md";
+import {FiLoader} from "react-icons/fi";
 import './category.css'
 
 export default function CategoryPage() {
