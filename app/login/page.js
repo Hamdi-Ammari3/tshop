@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "../../lib/firebaseConfig";
@@ -317,7 +316,7 @@ export default function LoginPage() {
                                                 type="tel"
                                                 inputMode="numeric"
                                                 maxLength={8}
-                                                placeholder="12 345 678"
+                                                placeholder="20 345 678"
                                                 value={phone}
                                                 autoFocus={!isSignup}
                                                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 8))}

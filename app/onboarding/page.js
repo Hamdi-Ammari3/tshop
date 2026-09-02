@@ -13,7 +13,7 @@ import {
     FiArrowLeft, FiUpload, FiCheck, FiShoppingBag, FiX,
     FiAlertCircle, FiPhone, FiGlobe, FiLoader, FiStar,
     FiPackage, FiMapPin, FiMessageCircle, FiZap, FiShield,
-    FiImage, FiUser,
+    FiImage,
 } from "react-icons/fi";
 import "./onboarding.css";
 
@@ -250,7 +250,7 @@ export default function Onboarding() {
             const res = await fetch("/api/auth/send-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone: phone.trim() }),
+                body: JSON.stringify({ phone: phone.trim(), name: storeName.trim(), mode: "checkout" }),
             });
             const data = await res.json();
             if (!res.ok) { showToast(data.error || "Impossible d'envoyer le code."); return; }
@@ -273,7 +273,7 @@ export default function Onboarding() {
             await fetch("/api/auth/send-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone: phone.trim() }),
+                body: JSON.stringify({ phone: phone.trim(), name: storeName.trim(), mode: "checkout" }),
             });
         } catch { /* silent */ }
     };
@@ -294,6 +294,7 @@ export default function Onboarding() {
                     phone: phone.trim(),
                     code: otp.join(""),
                     name: storeName.trim(),
+                    mode: "checkout",
                 }),
             });
             const data = await res.json();
