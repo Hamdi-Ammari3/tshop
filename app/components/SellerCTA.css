@@ -361,6 +361,7 @@
 .seller-grid{
 
     grid-template-columns:1fr;
+    gap:20px;
 
 }
 
@@ -388,7 +389,7 @@
 
     margin:50px auto;
 
-    padding:0 10px;
+    padding:0 4px;
 
 }
 
@@ -396,13 +397,13 @@
 
     padding:30px 15px;
 
-    border-radius:24px;
+    border-radius:0px;
 
 }
 
 .seller-left h2{
 
-    font-size:32px;
+    font-size:20px;
 
 }
 
@@ -434,6 +435,16 @@
 .seller-stat-card{
 
     padding:22px;
+
+}
+
+.seller-stat-card h3{
+
+    margin:10px 0px 0px;
+
+    font-size:15px;
+
+    font-weight:800;
 
 }
 

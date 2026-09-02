@@ -1,16 +1,7 @@
 "use client";
 
 import Link from "next/link";
-
-import {
-    FiArrowRight,
-    FiShoppingBag,
-    FiTruck,
-    FiTrendingUp,
-    FiGlobe,
-    FiShield,
-} from "react-icons/fi";
-
+import {FiArrowRight,FiShoppingBag,FiTruck,FiTrendingUp,FiGlobe} from "react-icons/fi";
 import "./SellerCTA.css";
 
 export default function SellerCTA() {
@@ -90,15 +81,6 @@ export default function SellerCTA() {
                                 Créer ma boutique
 
                                 <FiArrowRight />
-
-                            </Link>
-
-                            <Link
-                                href="/support"
-                                className="seller-secondary-btn"
-                            >
-
-                                En savoir plus
 
                             </Link>
 

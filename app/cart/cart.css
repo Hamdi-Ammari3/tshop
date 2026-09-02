@@ -425,8 +425,11 @@
 
 @media (max-width: 768px) { 
     .ct-page { 
-        padding: 20px 10px;
+        padding: 10px 0px;
     } 
+    .ct-title {
+        font-size: 16px;
+    }
     .ct-breadcrumb {
         padding:10px;
         gap: 8px;
@@ -438,5 +441,20 @@
     }
     .ct-layout {
         padding:0px 10px;
+    }
+    .ct-items-header {
+        padding: 14px 5px;
+    }
+    .ct-row {
+        display: flex;
+        gap: 14px;
+        padding: 14px 5px;
+        border-bottom: 1px solid var(--ct-bg-muted);
+    }
+    .ct-summary-card {
+        padding: 14px 5px;
+    }
+    .ct-summary-total h2 {
+        font-size: 15px;
     }
 }

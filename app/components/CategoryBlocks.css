@@ -179,7 +179,7 @@
 
 .category-card-link{
 
-    margin-top:18px;
+    margin:15px 0px 10px;
 
     display:inline-flex;
 
@@ -242,7 +242,7 @@
 
 .category-blocks-header h2{
 
-    font-size:28px;
+    font-size:20px;
 }
 
 .category-blocks-grid{
@@ -263,7 +263,7 @@
 
     margin:50px auto;
 
-    padding:0 10px;
+    padding: 4px;
 }
 
 .category-blocks-grid{
@@ -273,21 +273,17 @@
     gap:18px;
 }
 
-.category-blocks-header h2{
-
-    font-size:24px;
-}
-
 .category-card{
 
-    padding:18px;
+    padding:10px;
+    border-radius: 0px;
 }
 
 .category-card-title{
 
     min-height:auto;
 
-    font-size:17px;
+    font-size:15px;
 }
 
 .category-card-description{

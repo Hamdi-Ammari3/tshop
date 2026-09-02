@@ -64,7 +64,6 @@
 .ck-back-link:hover { color: var(--ck-primary); }
 
 .ck-title { font-size: 22px; font-weight: 800; margin: 0; }
-@media (min-width: 768px) { .ck-title { font-size: 22px; } }
 
 .ck-stepper {
     display: none;
@@ -546,7 +545,7 @@
 
 @media (max-width: 768px) { 
   .ck-page { 
-    padding: 20px 10px;
+    padding: 10px 0px;
   } 
   .ck-breadcrumb {
     padding:10px;
@@ -557,7 +556,16 @@
     margin: 5px 0px 15px;
     padding:0px 10px;
   }
+  .ck-title { 
+    font-size: 15px;
+   }
   .ck-layout {
     padding:0px 10px;
+  }
+  .ck-card,.ck-summary-header,.ck-summary-item,.ck-summary-rows,.ck-summary-total{
+    padding: 14px 5px;
+  }
+  .ck-summary-total h2{
+    font-size: 15px;
   }
 }

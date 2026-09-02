@@ -417,6 +417,7 @@ export default function ProductPage() {
             <div className="details-card">
               <h1 className="product-title">{product.name}</h1>
 
+              {/*
               {(product.rating || product.reviews) && (
                 <div className="rating-row">
                   {product.rating && (
@@ -434,6 +435,7 @@ export default function ProductPage() {
                   )}
                 </div>
               )}
+              */}
 
               <div className="price-block">
                 <div className="price-row">
@@ -618,6 +620,7 @@ export default function ProductPage() {
                     </p>
                   )}
 
+                  {/* 
                   <div className="secondary-actions">
                     <button className="secondary-btn">
                       <FiHeart size={14} /> Favoris
@@ -626,6 +629,8 @@ export default function ProductPage() {
                       <FiShare2 size={14} /> Partager
                     </button>
                   </div>
+                  */}
+                  
                 </div>
 
                 <ul className="trust-list">

@@ -112,7 +112,7 @@
 
     transition:.25s;
 
-    margin-top: 10px;
+    margin: 10px 0px;
 
 }
 
@@ -160,7 +160,7 @@
 
 .category-product-price{
 
-    font-size:19px;
+    font-size:17px;
 
     font-weight:800;
 
@@ -257,7 +257,7 @@
 
     .category-product-price{
 
-        font-size:17px;
+        font-size:15px;
 
     }
 

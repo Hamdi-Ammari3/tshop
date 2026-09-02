@@ -888,4 +888,21 @@
     padding: 16px 10px;
   }
 
+  .product-title,.price-current,.buybox-price,.total-box h3 {
+    font-size: 15px;
+  }
+  .price-old {
+    font-size: 13px;
+    padding-bottom: 0px;
+  }
+
+  .price-discount-chip {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 0px 6px;
+    border-radius: 6px;
+    margin-bottom: 0px;
+  }
+
+
 }

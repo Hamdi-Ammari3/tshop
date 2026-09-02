@@ -767,7 +767,7 @@
 @media (max-width: 768px) {
     .ds-sidebar      { display: none; }
     .ds-topbar       { display: flex; }
-    .ds-page-content { padding: 16px; }
+    .ds-page-content { padding: 16px 5px; }
 
     .ds-quota-banner { padding: 20px 18px; }
     .ds-quota-number { font-size: 24px; }
@@ -786,6 +786,10 @@
     .ds-store-url-pill { width: 100%; }
 
     .ds-sidebar-logo-img { width: 100px; }
+    
+    .ds-nav-link {
+        color: #fff;
+    }
 }
 
 @media (max-width: 480px) {
