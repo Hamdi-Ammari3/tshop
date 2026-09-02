@@ -1,27 +1,26 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import {getNewProducts,getProductsPage} from '../lib/products';
-import {diversifyProducts} from "../lib/diversifyProducts";
-import { searchProducts } from "../lib/searchProducts";
-import ProductSection from '../app/components/ProductSection';
-import {FiLoader} from "react-icons/fi";
-import {categories} from '../data/categories';
+import HeroSlider from './components/HeroSlider';
+import SellerCTA from './components/SellerCTA'; 
+import CategoryBlocks from './components/CategoryBlocks';
+import { categories } from "../data/categories";
 
 export default function Home() {
-  const router = useRouter();
 
-  const [newProducts,setNewProducts] = useState([]);
-  const [products,setProducts] = useState([]);
-  const [lastDoc,setLastDoc] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading,setLoading] = useState(true);
-  const [search,setSearch] = useState("");
-  const [searchLoading,setSearchLoading] = useState(false);
-  const [searchResults,setSearchResults] = useState([]);
-  const [hasSearched,setHasSearched] = useState(false);
+  return (
+    <main className="marketplace">
 
+      <HeroSlider/>
+
+      <CategoryBlocks categories={categories} />
+
+      <SellerCTA/>
+
+    </main>
+  );
+}
+
+/*
   //Fetch Products
   useEffect(() => {
 
@@ -121,21 +120,10 @@ export default function Home() {
     setHasSearched(false);
 
   }
+*/
 
-  if (loading) {
-
-    return (
-      <div className="loading-page">
-        <FiLoader className="spin-icon" />
-      </div>
-    )
-
-  }
-
-  return (
-    <main className="marketplace">
-
-      <section className="search-section">
+/*
+<section className="search-section">
 
         <div className="search-box">
 
@@ -167,7 +155,7 @@ export default function Home() {
 
       </section>
 
-      <section className="categories-section">
+            <section className="categories-section">
 
         <div className="categories-scroll">
 
@@ -198,7 +186,7 @@ export default function Home() {
 
       </section>
 
-      {hasSearched ? (
+            {hasSearched ? (
 
   <>
     {searchResults.length > 0 ? (
@@ -264,7 +252,4 @@ export default function Home() {
   </>
 
 )}
-
-    </main>
-  );
-}
+*/

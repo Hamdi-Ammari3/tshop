@@ -1,60 +1,109 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { FiShoppingCart, FiTrendingUp } from "react-icons/fi";
+import "./ProductCard.css";
 
 export default function ProductCard({ product }) {
-  const router = useRouter();
 
-  return (
-    <div 
-      className="product-card"
-      //onClick={() => window.open(`/product/${product.id}`,"_blank")}
-      onClick={() => router.push(`/product/${product.id}`)}
-    >
+    const router = useRouter();
 
-      <div className="product-image-wrapper">
+    const discount =
+        product.hasDiscount &&
+        product.oldPrice > product.price
+            ? Math.round(
+                  ((product.oldPrice - product.price) /
+                      product.oldPrice) *
+                      100
+              )
+            : 0;
 
-        {product.hasDiscount && (
-            <div className="discount-badge">
-                - {Math.round(((product.oldPrice - product.price) /product.oldPrice) * 100)} %
+    const soldCount = Number(product.stats?.ordersCount || 0);
+
+    return (
+
+        <article
+            className="category-product-card"
+            onClick={() =>
+                router.push(`/product/${product.id}`)
+            }
+        >
+
+            <div className="category-product-image">
+
+                <img
+                    src={
+                        product.thumbnail ||
+                        product.images?.[0]
+                    }
+                    alt={product.name}
+                    loading="lazy"
+                />
+
+                {discount > 0 && (
+
+                    <span className="category-product-discount">
+
+                        -{discount}%
+
+                    </span>
+
+                )}
+
             </div>
-        )}
 
-        <img
-          src={product.images?.[0]}
-          alt={product.name}
-        />
+            <div className="category-product-content">
 
-      </div>
+                <h3 className="product-card-name">{product.name}</h3>
 
-      <div className="product-content">
+                <p className="category-product-store">
 
-        <h3 className="product-name">
-          {product.name}
-        </h3>
+                    Vendu par
+                    <strong>
+                        {" "}
+                        {product.storeName ||
+                            product.store ||
+                            "Boutique"}
+                    </strong>
 
-        <div className="product-price-container">
+                </p>
 
-          {product.hasDiscount ? (
-            <>
-              <span className="old-price">
-                {product.oldPrice} DT
-              </span>
+                {soldCount > 0 && (
 
-              <span className="new-price">
-                {product.price} DT
-              </span>
-            </>
-          ) : (
-            <span className="new-price">
-              {product.price} DT
-            </span>
-          )}
+                    <div className="category-product-sold">
 
-        </div>
+                        <FiTrendingUp />
 
-      </div>
+                        <span>{soldCount}+ vendus</span>
 
-    </div>
-  );
+                    </div>
+
+                )}
+
+                <div className="category-product-footer">
+
+                        <div className="category-product-price">
+
+                            {Number(product.price).toFixed(3)} DT
+
+                        </div>
+
+                        {product.hasDiscount && (
+
+                            <div className="category-product-old-price">
+
+                                {Number(product.oldPrice).toFixed(3)} DT
+
+                            </div>
+
+                        )}
+
+                </div>
+
+            </div>
+
+        </article>
+
+    );
+
 }

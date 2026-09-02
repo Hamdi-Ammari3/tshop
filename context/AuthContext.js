@@ -1,40 +1,73 @@
 "use client";
 
-import {createContext,useContext,useEffect,useState} from "react";
-import {onAuthStateChanged} from "firebase/auth";
-
-import { auth } from "../lib/firebaseConfig";
+import { createContext, useContext, useEffect, useState } from "react";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { auth, DB } from "../lib/firebaseConfig";
 
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+    useEffect(() => {
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-    });
+        let unsubDoc = null;
 
-    return () => unsubscribe();
+        const unsubAuth = onAuthStateChanged(auth, (firebaseUser) => {
 
-  }, []);
+            if (unsubDoc) {
+                unsubDoc();
+                unsubDoc = null;
+            }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+            if (!firebaseUser) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            unsubDoc = onSnapshot(
+                doc(DB, "users", firebaseUser.uid),
+                async (snap) => {
+                    if (snap.exists()) {
+                        const data = snap.data();
+                        setUser({
+                            uid: firebaseUser.uid,
+                            name: data.name || "",
+                            phone: data.phone || "",
+                            storeId: data.storeId || null,
+                        });
+                        setLoading(false);
+                    } else {
+                        // Doc missing — sign out so user lands on /login cleanly
+                        await signOut(auth);
+                        // loading + user handled by the !firebaseUser branch above
+                    }
+                },
+                (err) => {
+                    console.error("AuthContext user doc error:", err);
+                    setLoading(false);
+                }
+            );
+        });
+
+        return () => {
+            unsubAuth();
+            if (unsubDoc) unsubDoc();
+        };
+
+    }, []);
+
+    return (
+        <AuthContext.Provider value={{ user, loading }}>
+            {children}
+        </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+    return useContext(AuthContext);
 }

@@ -1,720 +1,353 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import {deleteDoc,doc} from "firebase/firestore";
-import {DB} from "../../../lib/firebaseConfig";
+import { deleteDoc, doc } from "firebase/firestore";
+import { DB } from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
-import {AIPostDialog} from '../../components/AIPostDialog';
-import {FiEdit2,FiTrash2,FiPlus,FiChevronDown,FiChevronRight,FiLayers,FiArchive,FiBox,FiImage,FiLoader} from "react-icons/fi";
+import { AIPostDialog } from "../../components/AIPostDialog";
+import {
+    FiPlus, FiSearch, FiPackage, FiEdit2, FiTrash2,
+    FiChevronDown, FiLayers, FiArchive, FiAlertTriangle,
+    FiX, FiLoader,
+} from "react-icons/fi";
 import { LuSparkles } from "react-icons/lu";
 import "./products.css";
 
-/* TOTAL STOCK */
+/* ─── HELPERS ─────────────────────────────────────────── */
+
 function totalVariantStock(product) {
-
-  return (
-    product.variants || []
-  ).reduce(
-    (sum, combo) =>
-      sum + Number(combo.inventory || 0),
-    0
-  );
-
+    return (product.variants || []).reduce(
+        (sum, v) => sum + Number(v.inventory || 0), 0
+    );
 }
 
-/* STOCK BADGE */
-function StockBadge({ qty }) {
-
-  let tone = "stock-good";
-
-  if (qty === 0) {
-    tone = "stock-empty";
-  }
-
-  else if (qty < 5) {
-    tone = "stock-low";
-  }
-
-  return (
-
-    <span className={`stock-badge ${tone}`} >
-
-      {qty === 0 ? "Rupture" : `${qty}`}
-
-    </span>
-
-  );
-
+function getStockValue(product) {
+    if (product.variants?.length) return totalVariantStock(product);
+    return product.inventory || 0;
 }
 
-/* PRODUCT META */
-function ProductMeta({ product }) {
-
-  const variantCount = product.variants?.length || 0;
-
-  const lotCount = product.lotRules?.lots?.length || 0;
-
-  const stock = variantCount > 0 ? totalVariantStock(product) : product.trackInventory ? product.inventory || 0 : null;
-
-  return (
-
-    <div className="product-meta">
-
-      {stock !== null && (
-        <StockBadge qty={stock} />
-      )}
-
-      {variantCount > 0 && (
-
-        <div className="product-meta-badge">
-
-          <FiLayers />
-
-          {variantCount} variantes
-
-        </div>
-
-      )}
-
-      {lotCount > 0 && (
-
-        <div className="product-meta-badge">
-
-          <FiArchive />
-
-          {lotCount} lots
-
-        </div>
-
-      )}
-
-    </div>
-
-  );
-
+function getProductStatus(product) {
+    if (product.status) return product.status;
+    return getStockValue(product) <= 0 ? "rupture" : "actif";
 }
 
-/* VARIANTS TABLE */
-function VariantsTable({ product }) {
+function StatusPill({ status }) {
+    const map = {
+        actif:     { cls: "pr-pill-active",  label: "Actif" },
+        rupture:   { cls: "pr-pill-out",     label: "Rupture" },
+    };
+    const { cls, label } = map[status] || map.actif;
+    return <span className={`pr-pill ${cls}`}>{label}</span>;
+}
 
-  if (!product.hasVariants ||!product.variants ||product.variants.length === 0) {
-    return null;
-  }
+function StockInline({ stock }) {
+    if (stock === 0) return <span className="pr-stock-inline pr-stock-inline-out">Rupture</span>;
+    if (stock <= 5)  return <span className="pr-stock-inline pr-stock-inline-low">{stock} restants</span>;
+    return <span className="pr-stock-inline pr-stock-inline-ok">{stock} en stock</span>;
+}
 
-  const headers = [...(product.options || [])].sort((a, b) => a.position - b.position).map((option) => option.name);
+/* ─── EXPANDED DETAILS (variants + lots) ─────────────── */
 
-  return (
-
-    <div>
-
-      <div className="details-section-title">
-
-        <FiLayers />
-
-        <span>
-          Combinaisons variantes
-        </span>
-
-      </div>
-
-      <div className="variants-table-wrapper">
-
-        <table className="variants-table">
-
-          <thead>
-
-            <tr>
-
-              <th>
-                Variante
-              </th>
-
-              {headers.map((header) => (
-
-                <th key={header}>
-                  {header}
-                </th>
-
-              ))}
-
-              <th>
-                Prix
-              </th>
-
-              <th>
-                Stock
-              </th>
-
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {product.variants.map(
-              (combo) => (
-
-                <tr
-                  key={combo.id}
-                >
-
-                  <td style={{display:'flex',justifyContent:'center'}}>
-
-                    <div className="variant-thumb">
-
-                      {combo.image ? (
-
-                        <img
-                          src={combo.image}
-                          alt=""
-                        />
-
-                      ) : (
-
-                        <div className="variant-placeholder">
-
-                          <FiImage />
-
+function VariantsBlock({ product }) {
+    if (!product.hasVariants || !product.variants?.length) return null;
+    return (
+        <div>
+            <p className="pr-exp-heading"><FiLayers size={13} /> Variantes</p>
+            <div className="pr-exp-list">
+                {product.variants.map((v) => {
+                    const label = (v.options || [])
+                        .sort((a, b) => a.position - b.position)
+                        .map((o) => o.value)
+                        .join(" / ") || "Variante";
+                    return (
+                        <div key={v.id} className="pr-exp-row">
+                            <span className="pr-exp-row-label">{label}</span>
+                            <span className="pr-exp-row-meta">
+                                <span className="pr-exp-row-price">{v.price} TND</span>
+                                <StockInline stock={Number(v.inventory || 0)} />
+                            </span>
                         </div>
-
-                      )}
-
-                    </div>
-
-                  </td>
-
-                  {(combo.options || [])
-                  .sort((a, b) => a.position - b.position)
-                  .map((option, index) => (
-
-                    <td key={index}>
-                      {option.value}
-                    </td>
-
-                  ))}
-
-                  <td className="variant-price">
-
-                    {combo.price}
-
-                    {combo.oldPrice && (
-
-                      <span>
-
-                        {combo.oldPrice}
-
-                      </span>
-
-                    )}
-
-                  </td>
-
-                  <td>
-
-                    <StockBadge
-                      qty={
-                        combo.inventory
-                      }
-                    />
-
-                  </td>
-
-                </tr>
-
-              )
-            )}
-
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
-  );
-
+                    );
+                })}
+            </div>
+        </div>
+    );
 }
 
-/* LOTS TABLE */
-function LotsTable({ product }) {
+function LotsBlock({ product }) {
+    if (!product?.lotRules?.enabled || !product?.lotRules?.lots?.length) return null;
+    return (
+        <div>
+            <p className="pr-exp-heading"><FiArchive size={13} /> Lots</p>
+            <div className="pr-exp-list">
+                {product.lotRules.lots.map((lot, i) => (
+                    <div key={i} className="pr-exp-row">
+                        <span className="pr-exp-row-label">
+                            Lot de {lot.quantity}
+                            <span className="pr-exp-row-sub">
+                                ({(lot.price / lot.quantity).toFixed(1)} TND/u)
+                            </span>
+                        </span>
+                        <span className="pr-exp-row-meta">
+                            <span className="pr-exp-row-price">{lot.price} TND</span>
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
-  if (
-    !product?.lotRules?.enabled ||
-    !product?.lotRules?.lots ||
-    product.lotRules.lots.length === 0
-  ) {
-    return null;
-  }
+/* ─── PRODUCT CARD ────────────────────────────────────── */
 
-  return (
+function ProductCard({ product, onRequestDelete }) {
+    const [expanded, setExpanded] = useState(false);
 
-    <div>
+    const hasDetails = !!(product.variants?.length || product?.lotRules?.lots?.length);
+    const stock = getStockValue(product);
+    const status = getProductStatus(product);
 
-      <div className="section-title">
-
-        <FiArchive />
-
-        <span>
-          Vente par lot
-        </span>
-
-      </div>
-
-      <div className="lots-grid">
-
-        {product?.lotRules?.lots.map(
-          (lot, index) => {
-
-            const unitPrice =
-              lot.price /
-              lot.quantity;
-
-            return (
-
-              <div
-                key={index}
-                className="lot-card"
-              >
-
-                <div>
-
-                  <p className="lot-title">
-
-                    Lot de{" "}
-                    {lot.quantity}
-
-                  </p>
-
-                  <p className="lot-unit">
-
-                    {unitPrice.toFixed(
-                      2
-                    )}{" "}
-
-                    TND / pièce
-
-                  </p>
-
+    return (
+        <div className="pr-card">
+            <div className="pr-card-main">
+                <div className="pr-card-img">
+                    <img
+                        src={product.thumbnail || product.images?.[0] || "/placeholder.png"}
+                        alt={product.name}
+                        loading="lazy"
+                    />
                 </div>
 
-                <strong>
+                <div className="pr-card-info">
+                    <div className="pr-card-title-row">
+                        <p className="pr-card-name">{product.name}</p>
+                        <StatusPill status={status} />
+                    </div>
+                    <p className="pr-card-category">{product.category || "—"}</p>
+                    <div className="pr-card-meta">
+                        <span className="pr-card-price">{product.price} TND</span>
+                        <StockInline stock={stock} />
+                        <span className="pr-card-sales">{product.sales || 0} vendus</span>
+                        {product.variants?.length ? (
+                            <span className="pr-chip pr-chip-secondary">
+                                <FiLayers size={11} />
+                                {product.variants.length} variante{product.variants.length > 1 ? "s" : ""}
+                            </span>
+                        ) : null}
+                        {product?.lotRules?.lots?.length ? (
+                            <span className="pr-chip pr-chip-primary">
+                                <FiArchive size={11} />
+                                {product.lotRules.lots.length} lot{product.lotRules.lots.length > 1 ? "s" : ""}
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
 
-                  {lot.price} TND
+                <div className="pr-card-actions">
+                    {hasDetails && (
+                        <button
+                            className="pr-btn-outline"
+                            onClick={() => setExpanded((v) => !v)}
+                        >
+                            Détails
+                            <FiChevronDown
+                                size={14}
+                                className={`pr-chevron ${expanded ? "pr-chevron-open" : ""}`}
+                            />
+                        </button>
+                    )}
+                    <Link
+                        href={`/dashboard/products/${product.id}`}
+                        className="pr-icon-btn"
+                        aria-label="Modifier"
+                    >
+                        <FiEdit2 size={16} />
+                    </Link>
+                    <button
+                        className="pr-icon-btn pr-icon-btn-danger"
+                        aria-label="Supprimer"
+                        onClick={() => onRequestDelete(product)}
+                    >
+                        <FiTrash2 size={16} />
+                    </button>
+                </div>
+            </div>
 
-                </strong>
-
-              </div>
-
-            );
-
-          }
-        )}
-
-      </div>
-
-    </div>
-
-  );
-
-}
-
-/* INVENTORY */
-function InventoryLine({product}) {
-
-  if (
-    product.variants
-      ?.length
-  ) {
-    return null;
-  }
-
-  if (
-    !product.trackInventory
-  ) {
-    return null;
-  }
-
-  return (
-
-    <div className="inventory-line">
-
-      <FiBox />
-
-      <span>
-        Inventaire
-      </span>
-
-      <StockBadge
-        qty={
-          product.inventory || 0
-        }
-      />
-
-    </div>
-
-  );
-
-}
-
-/* DETAILS */
-function ExpandedDetails({product}) {
-
-  if (!product.variants?.length && !product?.lotRules?.lots?.length && !product.trackInventory) {
-
-    return (
-
-      <p className="empty-details">
-
-        Aucun stock, variante
-        ou lot configuré.
-
-      </p>
-
+            {expanded && hasDetails && (
+                <div className="pr-card-expanded">
+                    <VariantsBlock product={product} />
+                    <LotsBlock product={product} />
+                </div>
+            )}
+        </div>
     );
-
-  }
-
-  return (
-
-    <div className="expanded-details">
-
-      <InventoryLine
-        product={product}
-      />
-
-      <VariantsTable
-        product={product}
-      />
-
-      <LotsTable
-        product={product}
-      />
-
-    </div>
-
-  );
-
 }
 
-/* PRODUCT ROW */
-function ProductRow({product}) {
+/* ─── PAGE ────────────────────────────────────────────── */
 
-  const {products,setProducts} = useDashboard();
+export default function ProductsPage() {
+    const { loading: storeLoading } = useStore();
+    const { products, setProducts, loading } = useDashboard();
 
-  const [open, setOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
-  const [aiOpen,setAiOpen] = useState(false);
+    const [query, setQuery]     = useState("");
+    const [filter, setFilter]   = useState("all"); // all | actif | rupture
+    const [toDelete, setToDelete] = useState(null);
+    const [deletingId, setDeletingId] = useState(null);
 
-  const hasDetails = !!product.variants?.length || !!product?.lotRules?.lots?.length || !!product.trackInventory;
-
-  // DELETE 
-  async function handleDelete(productId) {
-
-    const confirmDelete = window.confirm("Voulez-vous vraiment supprimer ce produit ?");
-
-    if (!confirmDelete) return;
-
-    if (deletingId) return;
-
-    try {
-
-      setDeletingId(productId);
-
-      const product = products.find((item) => item.id === productId);
-
-      if (!product) {
-        throw new Error(
-          "Produit introuvable."
-        );
-      }
-
-      // MAIN PRODUCT IMAGES
-      const mainImages = product.images || [];
-
-      // VARIANT IMAGES
-      const variantImages = product.variants?.map((variant) => variant.image).filter(Boolean) || [];
-
-      // MERGE + REMOVE DUPLICATES
-      const allImages = [
-        ...new Set([
-          ...mainImages,
-          ...variantImages,
-        ]),
-      ];
-
-      if (allImages.length > 0) {
-
-        await fetch("/api/delete-cloudinary-images",{
-          method: "POST",
-
-          headers: {"Content-Type":"application/json"},
-
-          body: JSON.stringify({images: allImages,}),
+    const filtered = useMemo(() => {
+        return products.filter((p) => {
+            const matchQ = p.name.toLowerCase().includes(query.toLowerCase()) ||
+                (p.category || "").toLowerCase().includes(query.toLowerCase());
+            const matchF = filter === "all" || getProductStatus(p) === filter;
+            return matchQ && matchF;
         });
-      }
+    }, [products, query, filter]);
 
-      await deleteDoc(
-        doc(
-          DB,
-          "products",
-          productId
-        )
-      );
-
-      setProducts((prev) =>
-        prev.filter(
-          (item) =>
-            item.id !== productId
-        )
-      );
-
-    } catch (error) {
-
-      console.log(error);
-
-      alert("Erreur lors de la suppression.");
-
-    } finally {
-
-      setDeletingId(null);
-
+    async function handleDelete(productId) {
+        if (deletingId) return;
+        try {
+            setDeletingId(productId);
+            const p = products.find((i) => i.id === productId);
+            if (!p) throw new Error("Produit introuvable.");
+            const allImages = [...new Set([
+                ...(p.images || []),
+                ...(p.variants?.map((v) => v.image).filter(Boolean) || []),
+            ])];
+            if (allImages.length > 0) {
+                await fetch("/api/delete-cloudinary-images", {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ images: allImages }),
+                });
+            }
+            await deleteDoc(doc(DB, "products", productId));
+            setProducts((prev) => prev.filter((i) => i.id !== productId));
+            setToDelete(null);
+        } catch (err) {
+            console.error(err);
+            alert("Erreur lors de la suppression.");
+        } finally {
+            setDeletingId(null);
+        }
     }
 
-  }
-
-  return (
-
-    <div className="product-row-card">
-
-      {/* HEADER */}
-      <div className="product-row-header">
-
-        {/* EXPAND */}
-        <button
-          type="button"
-          onClick={() => setOpen((prev) => !prev)}
-          disabled={!hasDetails}
-          className={`expand-btn ${!hasDetails? "disabled": ""}`}
-        >
-
-          {open ? (
-            <FiChevronDown />
-          ) : (
-            <FiChevronRight />
-          )}
-
-        </button>
-
-        {/* IMAGE */}
-        <img
-          src={product.thumbnail || product.images?.[0] || "/placeholder.png"}
-          alt={product.name}
-          className="product-image"
-        />
-
-        {/* INFO */}
-        <div className="product-info">
-
-          {/* TOP */}
-          <div className="product-title-row">
-
-            <p className="product-name">
-
-              {product.name}
-
-            </p>
-
-            <span className="product-category">
-
-              {product.category}
-
-            </span>
-
-          </div>
-
-          {/* PRICE */}
-          <div className="product-price-row">
-
-            <strong>
-
-              {product.price} TND
-
-            </strong>
-
-            {product.oldPrice && (
-
-              <span>
-
-                {product.oldPrice} TND
-
-              </span>
-
-            )}
-
-          </div>
-
-          {/* META */}
-          <ProductMeta product={product} />
-
-        </div>
-
-        {/* ACTIONS */}
-        <div className="product-actions">
-
-          <button
-            className="ai-post-btn"
-            onClick={() => setAiOpen(true)}
-          >
-            <LuSparkles />
-            publication AI
-          </button>
-
-          <Link
-            href={`/dashboard/products/${product.id}`}
-            className="action-btn"
-          >
-
-            <FiEdit2 />
-
-          </Link>
-
-          <button
-            className="action-btn delete"
-            onClick={() => handleDelete(product.id)}
-            disabled={deletingId === product.id}
-          >
-
-            {deletingId === product.id ? (
-              <FiLoader className="spin-icon" />
-            ) : (
-              <FiTrash2 />
-            )}
-
-          </button>
-
-        </div>
-
-      </div>
-
-      {/* EXPANDED */}
-      {open && hasDetails && (
-
-        <div className="product-expanded">
-
-          <ExpandedDetails product={product} />
-
-        </div>
-
-      )}
-
-      {/* GENERATE POST MODAL */}
-      <AIPostDialog
-        product={product}
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-      />
-
-    </div>
-
-  );
-
-}
-
-/* PAGE */
-export default function ProductsPage() {
-
-  const { loading: storeLoading } = useStore();
-
-  const {products,setProducts,loading} = useDashboard();
-
-  const [openedProducts, setOpenedProducts] = useState({});
-
-  const [openedVariantGroups, setOpenedVariantGroups] = useState({});
-
-    // LOADING 
-  if (loading || storeLoading) {
+    if (loading || storeLoading) {
+        return (
+            <div className="pr-loading">
+                <FiLoader className="pr-spin" size={28} />
+                <p>Chargement des produits...</p>
+            </div>
+        );
+    }
 
     return (
-      <div className="dashboard-loading-screen">
+        <div className="pr-page">
 
-        <div className="dashboard-loading-card">
+            {/* HEADER */}
+            <div className="pr-page-header">
+                <div>
+                    <h1 className="pr-page-title">Produits</h1>
+                    <p className="pr-page-subtitle">
+                        {products.length} produit{products.length !== 1 ? "s" : ""} dans votre catalogue
+                    </p>
+                </div>
+                <Link href="/dashboard/products/new" className="pr-btn-primary">
+                    <FiPlus size={15} />
+                    <span className="pr-btn-primary-full">Ajouter un produit</span>
+                    <span className="pr-btn-primary-short">Ajouter</span>
+                </Link>
+            </div>
 
-          <FiLoader className="spin-icon" />
+            {/* FILTERS */}
+            <div className="pr-filters-row">
+                <div className="pr-search-box">
+                    <FiSearch size={15} className="pr-search-ico" />
+                    <input
+                        type="search"
+                        placeholder="Rechercher un produit…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                    />
+                </div>
+                <div className="pr-tabs">
+                    {["all", "actif", "rupture"].map((k) => (
+                        <button
+                            key={k}
+                            onClick={() => setFilter(k)}
+                            className={`pr-tab ${filter === k ? "pr-tab-active" : ""}`}
+                        >
+                            {k === "all" ? "Tous"
+                                : k === "actif" ? "Actifs"
+                                : "Ruptures"}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-          <h3>
-            Chargement des produits...
-          </h3>
+            {/* LIST */}
+            <div className="pr-list">
+                {filtered.map((product) => (
+                    <ProductCard
+                        key={product.id}
+                        product={product}
+                        onRequestDelete={setToDelete}
+                    />
+                ))}
 
-          <p>
-            Veuillez patienter.
-          </p>
+                {filtered.length === 0 && (
+                    <div className="pr-empty">
+                        <div className="pr-empty-icon"><FiPackage size={22} /></div>
+                        <p className="pr-empty-title">
+                            {query ? "Aucun produit trouvé" : "Aucun produit"}
+                        </p>
+                        <p className="pr-empty-sub">
+                            {query
+                                ? `Essayez de modifier vos filtres ou votre recherche.`
+                                : "Commencez par ajouter votre premier produit à la boutique."}
+                        </p>
+                        {!query && (
+                            <Link href="/dashboard/products/new" className="pr-btn-primary" style={{ marginTop: 12 }}>
+                                <FiPlus size={14} /> Ajouter un produit
+                            </Link>
+                        )}
+                    </div>
+                )}
+            </div>
 
+            {/* DELETE CONFIRM MODAL */}
+            {toDelete && (
+                <div className="pr-modal-backdrop" onClick={() => !deletingId && setToDelete(null)}>
+                    <div className="pr-modal pr-modal-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="pr-modal-danger-icon">
+                            <FiAlertTriangle size={20} />
+                        </div>
+                        <h2 className="pr-modal-title">Supprimer ce produit ?</h2>
+                        <p className="pr-modal-sub">
+                            « {toDelete.name} » sera retiré définitivement de votre boutique.
+                        </p>
+                        <div className="pr-modal-actions">
+                            <button
+                                className="pr-btn-secondary"
+                                onClick={() => setToDelete(null)}
+                                disabled={!!deletingId}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                className="pr-btn-danger"
+                                onClick={() => handleDelete(toDelete.id)}
+                                disabled={!!deletingId}
+                            >
+                                {deletingId === toDelete.id ? (
+                                    <FiLoader className="pr-spin" size={14} />
+                                ) : "Supprimer"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-
-      </div>
     );
-
-  }
-
-  return (
-    <div className="products-page">
-
-      {/* TOP */}
-      <div className="products-top">
-
-        <div>
-
-          <h1>
-            Produits
-          </h1>
-
-          <p>
-
-            {
-              products.length
-            }{" "}
-
-            produits dans votre boutique
-
-          </p>
-
-        </div>
-
-        <Link
-          href="/dashboard/products/new"
-          className="add-product-btn"
-        >
-
-          <FiPlus />
-
-          Ajouter un produit
-
-        </Link>
-
-      </div>
-
-      {/* LIST */}
-      <div className="products-list">
-
-        {products.map(
-          (product) => (
-
-            <ProductRow
-              key={product.id}
-              product={product}
-            />
-
-          )
-        )}
-
-      </div>
-
-    </div>
-
-  );
-
 }
-

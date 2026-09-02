@@ -1,75 +1,124 @@
 "use client";
 
-import { useRef } from "react";
 import ProductCard from "./ProductCard";
-import { MdArrowBackIosNew,MdArrowForwardIos } from "react-icons/md";
+import "./ProductSection.css";
+import Link from "next/link";
+import {FiArrowLeft} from "react-icons/fi";
+import { FiChevronRight } from "react-icons/fi";
 
-export default function ProductSection({title,products,showMore,onShowMore,horizontal = false,featured}) {
-
-    const scrollRef = useRef(null);
-
-    const scrollLeft = () => {
-        scrollRef.current?.scrollBy({left: -300,behavior: "smooth"});
-    };
-
-    const scrollRight = () => {
-        scrollRef.current?.scrollBy({left: 300,behavior: "smooth"});
-    };
+export default function ProductSection({title,showTitle,products,showMore,onShowMore}) {
 
     return (
-        <section className={`products-section ${featured ? "featured-section" : ""}`}>
 
-            <div className="section-header">
+        <section className="category-products">
 
-                <h2>{title}</h2>
+            {/* BREADCRUMB */}
 
-                <div className="section-actions">
+            {showTitle && (
+            <nav className="category-breadcrumb">
 
-                    {horizontal && (
-                        <>
-                            <button
-                                className="arrow-btn"
-                                onClick={scrollLeft}
-                            >
-                                <MdArrowBackIosNew/>
-                            </button>
+                <Link
+                    href="/"
+                    className="breadcrumb-link"
+                >
+                    Accueil
+                </Link>
 
-                            <button
-                                className="arrow-btn"
-                                onClick={scrollRight}
-                            >
-                                <MdArrowForwardIos/>
-                            </button>
-                        </>
-                    )}
+                <FiChevronRight className="breadcrumb-separator" />
+
+                <span
+                    className="breadcrumb-link"
+                >
+                    Catégories
+                </span>
+
+                <FiChevronRight className="breadcrumb-separator" />
+
+                <span className="breadcrumb-current">
+                    {title}
+                </span>
+
+            </nav>
+            )}
+
+            {/* TOOLBAR */}
+            {showTitle && (
+
+            
+            <div className="products-toolbar">
+
+                <div className="products-toolbar-header">
+                    <h5>Catégorie</h5>
+                    <h1>{title}</h1>
+                </div>
+                
+
+                <div className="products-sort">
+
+                    <span>
+                        Trier par
+                    </span>
+
+                    <select
+                        defaultValue="recent"
+                    >
+
+                        <option value="recent">
+                            Nouveautés
+                        </option>
+
+                        <option value="price-asc">
+                            Prix croissant
+                        </option>
+
+                        <option value="price-desc">
+                            Prix décroissant
+                        </option>
+
+                    </select>
 
                 </div>
 
             </div>
+            )}
 
-                <div
-                    ref={scrollRef}
-                    className={horizontal ? "products-row" : "products-grid"}
-                >
-                    {products.map((product) => (
-                        <ProductCard
-                            key={product.id}
-                            product={product}
-                        />
-                    ))}
-                </div>
+            {/* GRID */}
 
-            {showMore && products.length > 0 && (
-                <div className="load-more-wrapper">
+            <div className="category-products-grid">
+
+                {products.map((product, index) => (
+
+                    <ProductCard
+                        key={product.id}
+                        product={product}
+                        index={index}
+                    />
+
+                ))}
+
+            </div>
+
+            {/* LOAD MORE */}
+
+            {showMore && (
+
+                <div className="load-more-container">
+
                     <button
-                        className="show-more-btn"
                         onClick={onShowMore}
+                        className="load-more-btn"
                     >
-                        Voir plus
+
+                        Voir plus de produits
+
                     </button>
+
                 </div>
+
             )}
 
         </section>
+
     );
+
 }

@@ -1,600 +1,409 @@
 "use client";
 
-import {useMemo,useState} from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import {useRouter} from "next/navigation";
-import {addDoc,collection,serverTimestamp} from "firebase/firestore";
-import {DB} from "../../../../lib/firebaseConfig";
-import {usePublicStore} from "../../../../context/PublicStoreContext";
-import {tunisiaLocations} from '../../../../lib/tunisiaLocations'
-import {FiArrowLeft,FiCheck,FiLoader,FiX,FiAlertCircle,FiTruck,FiShield} from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { DB } from "../../../../lib/firebaseConfig";
+import { usePublicStore } from "../../../../context/PublicStoreContext";
+import { tunisiaLocations } from "../../../../lib/tunisiaLocations";
+import {
+    FiChevronRight, FiCheck, FiLoader, FiX, FiAlertCircle,
+    FiTruck, FiShield, FiUser, FiMapPin, FiPhone, FiLock,
+} from "react-icons/fi";
 import "./checkout.css";
 
+/* ─── FIELD COMPONENTS ────────────────────────────────── */
+
+function Field({ label, value, onChange, error, placeholder, icon, hint, inputMode }) {
+    return (
+        <div className="ck-field">
+            <label>{label}</label>
+            <div className={`ck-input-wrap ${error ? "ck-input-error" : ""}`}>
+                {icon && <span className="ck-input-icon">{icon}</span>}
+                <input
+                    type="text"
+                    value={value}
+                    inputMode={inputMode}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                />
+            </div>
+            {error ? <p className="ck-field-error">{error}</p> : hint ? <p className="ck-field-hint">{hint}</p> : null}
+        </div>
+    );
+}
+
+function SelectField({ label, value, onChange, error, options, placeholder, disabled }) {
+    return (
+        <div className="ck-field">
+            <label>{label}</label>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                disabled={disabled}
+                className={error ? "ck-input-error" : ""}
+            >
+                <option value="">{placeholder}</option>
+                {options.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
+            {error && <p className="ck-field-error">{error}</p>}
+        </div>
+    );
+}
+
+function PayOption({ active, onClick, title, desc, disabled }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className={`ck-pay-option ${active ? "ck-pay-option-active" : ""} ${disabled ? "ck-pay-option-disabled" : ""}`}
+        >
+            <span className="ck-pay-radio">{active && <span className="ck-pay-radio-dot" />}</span>
+            <span>
+                <span className="ck-pay-title">
+                    {title}
+                    {disabled && <span className="ck-pay-soon">Bientôt disponible</span>}
+                </span>
+                <span className="ck-pay-desc">{desc}</span>
+            </span>
+        </button>
+    );
+}
+
+/* ─── PAGE ────────────────────────────────────────────── */
+
 export default function CheckoutPage() {
+    const router = useRouter();
+    const { store, cart, cartSubtotal, shippingFee, cartTotal, clearCart } = usePublicStore();
 
-  const router = useRouter();
+    const isLocalhost = typeof window !== "undefined" && window.location.hostname === "localhost";
+    const slug = store?.slug;
+    const homeUrl = isLocalhost ? `/store/${slug}` : "/";
+    const cartUrl = isLocalhost ? `/store/${slug}/cart` : "/cart";
 
-  const {store,cart,cartSubtotal,shippingFee,cartTotal,clearCart} = usePublicStore();
+    const [form, setForm] = useState({
+        firstName: "", phone: "", governorate: "", delegation: "",
+        address: "", notes: "", payment: "cod",
+    });
+    const [errors, setErrors] = useState({});
+    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(false);
+    const [toast, setToast] = useState(null);
 
-  const [clientName,setClientName] = useState("");
-  const [clientPhone,setClientPhone] = useState("");
-  const [governorate,setGovernorate] = useState("");
-  const [delegation,setDelegation] = useState("");
-  const [clientAddress,setClientAddress] = useState("");
-  const [loading,setLoading] = useState(false);
-  const [success,setSuccess] = useState(false);
-  const [toast,setToast] = useState(null);
+    const delegations = form.governorate ? tunisiaLocations[form.governorate] || [] : [];
 
-  const delegations = governorate ? tunisiaLocations[governorate] || [] : [];
+    const totalItems = useMemo(() => cart.reduce((acc, item) => acc + item.quantity, 0), [cart]);
 
-  /* TOTAL ITEMS */
-  const totalItems = useMemo(() => {
+    const setField = (k, v) => {
+        setForm((f) => ({ ...f, [k]: v }));
+        setErrors((e) => ({ ...e, [k]: "" }));
+    };
 
-    return cart.reduce((acc, item) => acc + item.quantity, 0);
+    const showToast = (message, type = "error") => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
 
-  }, [cart]);
+    function validate() {
+        const e = {};
+        if (!form.firstName.trim()) e.firstName = "Nom requis";
 
-  /* TOAST */
-  const showToast = (message,type = "error") => {
-
-    setToast({message,type});
-
-    setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  };
-
-  /* SUBMIT */
-  async function handleSubmit(e) {
-
-    e.preventDefault();
-
-    if (loading) return;
-
-    /* NAME */
-    if (!clientName.trim()) {
-
-      showToast("Veuillez saisir votre nom complet");
-
-      return;
-    }
-
-    /* PHONE */
-    if (!clientPhone.trim()) {
-
-      showToast("Veuillez saisir votre numéro");
-
-      return;
-    }
-
-    /* CLEAN */
-    const cleanPhone = clientPhone.replace(/\s/g,"");
-
-    /* TUNISIA */
-    const tunisianPhoneRegex = /^[259]\d{7}$/;
-
-    if (!tunisianPhoneRegex.test(cleanPhone)) {
-
-      showToast("Le numéro doit contenir 8 chiffres et commencer par 2, 5 ou 9");
-
-      return;
-    }
-
-    /* ADDRESS */
-    if (!governorate) {
-
-      showToast("Veuillez sélectionner un gouvernorat");
-
-      return;
-    }
-
-    if (!delegation) {
-
-      showToast("Veuillez sélectionner une délégation");
-
-      return;
-    }
-
-    if (!clientAddress.trim()) {
-
-      showToast("Veuillez saisir votre adresse détaillée");
-
-      return;
-    }
-
-    try {
-
-      setLoading(true);
-
-      /* ITEMS */
-      const orderItems = cart.map((item) => {
-
-        const unitPrice = Number(item.finalPrice || 0);
-
-        const total = item.selectedLot ? unitPrice : unitPrice * item.quantity;
-
-        return {
-
-          productId: item.id,
-
-          productName: item.name,
-
-          productImage: item.selectedVariant ?.image || item.images?.[0] || "",
-
-          category: item.category || "",
-
-          quantity: item.quantity,
-
-          selectedOptions: item.selectedOptions || {},
-
-          selectedVariant: item.selectedVariant ? {
-            id: item.selectedVariant.id || null,
-
-            image: item.selectedVariant.image || "",
-
-            inventory: item.selectedVariant.inventory ?? null,
-          } : null,
-
-          selectedLot: item.selectedLot || null,
-
-          unitPrice,
-
-          total,
-
-          oldPrice: item.selectedVariant ?.oldPrice || item.oldPrice || null,
-
-          trackInventory: item.trackInventory || false,
-
-          shipping_fee: Number( item.shipping_fee || 0 )
+        const cleanPhone = form.phone.replace(/\s/g, "");
+        const tunisianPhoneRegex = /^[259]\d{7}$/;
+        if (!tunisianPhoneRegex.test(cleanPhone)) {
+            e.phone = "8 chiffres, doit commencer par 2, 5 ou 9";
         }
-      });
 
-      /* ORDER */
-      await addDoc(collection(DB,"orders"),{
-        source: "store_website",
+        if (!form.governorate) e.governorate = "Sélectionnez un gouvernorat";
+        if (!form.delegation) e.delegation = "Sélectionnez une délégation";
+        if (form.address.trim().length < 6) e.address = "Adresse trop courte";
 
-        storeId: store.id,
-
-        storeName: store.name,
-
-        storeSlug: store.slug,
-
-        items: orderItems,
-
-        itemsCount: totalItems,
-
-        subtotal: cartSubtotal,
-
-        shipping_fee: shippingFee,
-
-        total_amount: cartTotal,
-
-        clientName: clientName.trim(),
-
-        clientPhone: cleanPhone,
-
-        clientAddress: clientAddress.trim(),
-
-        governorate,
-
-        delegation,
-
-        fullAddress: `${clientAddress.trim()}, ${delegation}, ${governorate}`,
-
-        payment_method: "cash_on_delivery",
-
-        status: "pending",
-
-        createdAt: serverTimestamp(),
-      });
-
-      setSuccess(true);
-
-      clearCart();
-
-      setTimeout(() => {
-
-        router.push(`/`);
-
-      }, 2200);
-
-    } catch (error) {
-
-      console.log(error);
-
-      showToast("Une erreur est survenue");
-
-    } finally {
-
-      setLoading(false);
-
+        setErrors(e);
+        return Object.keys(e).length === 0;
     }
-  }
 
-  /* EMPTY */
-  if (cart.length === 0 && !success) {
-    return (
-      <div className="checkout-empty">
+    async function handleSubmit(ev) {
+        ev.preventDefault();
+        if (loading) return;
+        if (!validate()) {
+            showToast("Veuillez corriger les champs en rouge.");
+            return;
+        }
 
-        <h1>
-          Votre panier est vide
-        </h1>
+        try {
+            setLoading(true);
 
-        <p>
-          Ajoutez des produits avant de passer commande.
-        </p>
+            const cleanPhone = form.phone.replace(/\s/g, "");
 
-        <Link
-          href="/"
-          //href="/store/hamdi-store"
-          className="checkout-back-btn"
-        >
+            const orderItems = cart.map((item) => {
+                const unitPrice = Number(item.finalPrice || 0);
+                const total = item.selectedLot ? unitPrice : unitPrice * item.quantity;
+                return {
+                    productId: item.id,
+                    productName: item.name,
+                    productImage: item.selectedVariant?.image || item.images?.[0] || "",
+                    category: item.category || "",
+                    quantity: item.quantity,
+                    selectedOptions: item.selectedOptions || {},
+                    selectedVariant: item.selectedVariant ? {
+                        id: item.selectedVariant.id || null,
+                        image: item.selectedVariant.image || "",
+                        inventory: item.selectedVariant.inventory ?? null,
+                    } : null,
+                    selectedLot: item.selectedLot || null,
+                    unitPrice,
+                    total,
+                    oldPrice: item.selectedVariant?.oldPrice || item.oldPrice || null,
+                    trackInventory: item.trackInventory || false,
+                };
+            });
 
-          Retour à la boutique
+            await addDoc(collection(DB, "orders"), {
+                source: "store_website",
+                storeId: store.id,
+                storeName: store.name,
+                storeSlug: store.slug,
+                items: orderItems,
+                itemsCount: totalItems,
+                subtotal: cartSubtotal,
+                shipping_fee: shippingFee,
+                total_amount: cartTotal,
+                clientName: form.firstName.trim(),
+                clientPhone: cleanPhone,
+                governorate: form.governorate,
+                delegation: form.delegation,
+                clientAddress: form.address.trim(),
+                fullAddress: `${form.address.trim()}, ${form.delegation}, ${form.governorate}`,
+                notes: form.notes.trim() || null,
+                payment_method: "cash_on_delivery",
+                status: "pending",
+                createdAt: serverTimestamp(),
+            });
 
-        </Link>
+            setSuccess(true);
+            clearCart();
+            setTimeout(() => router.push(homeUrl), 2200);
+        } catch (error) {
+            console.error(error);
+            showToast("Une erreur est survenue. Réessayez.");
+        } finally {
+            setLoading(false);
+        }
+    }
 
-      </div>
-    );
-  }
+    /* EMPTY */
+    if (cart.length === 0 && !success) {
+        return (
+            <div className="ck-page">
+                <div className="ck-empty">
+                    <h1>Votre panier est vide</h1>
+                    <p>Ajoutez des produits avant de passer commande.</p>
+                    <Link href={homeUrl} className="ck-btn-primary-full">Retour à la boutique</Link>
+                </div>
+            </div>
+        );
+    }
 
-  /* SUCCESS */
-  if (success) {
+    /* SUCCESS */
+    if (success) {
+        return (
+            <div className="ck-page">
+                <div className="ck-success-wrap">
+                    <div className="ck-success-card">
+                        <div className="ck-success-icon"><FiCheck size={28} /></div>
+                        <h1>Commande confirmée !</h1>
+                        <p>
+                            Merci {form.firstName}. Votre commande a été enregistrée
+                            et sera bientôt en préparation.
+                        </p>
+                        <span className="ck-success-redirect">Redirection vers la boutique...</span>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-      <div className="checkout-success-page">
+        <div className="ck-page">
 
-        <div className="checkout-success-card">
+            {/* BREADCRUMB */}
+            <nav className="ck-breadcrumb">
+                <Link href={homeUrl} className="ck-breadcrumb-link">Accueil</Link>
+                <FiChevronRight size={13} />
+                <Link href={cartUrl} className="ck-breadcrumb-link">Mon panier</Link>
+                <FiChevronRight size={13} />
+                <span className="ck-breadcrumb-current">Commande</span>
+            </nav>
 
-          <div className="success-icon">
-            <FiCheck />
-          </div>
+            {/* TITLE */}
+            <div className="ck-title-row">
+                <div>
+                    <h1 className="ck-title">Finaliser ma commande</h1>
+                </div>
+            </div>
 
-          <h1>
-            Commande confirmée
-          </h1>
+            <form onSubmit={handleSubmit} className="ck-layout">
 
-          <p>
-            Votre commande a été envoyée avec succès.
-          </p>
+                {/* FORM */}
+                <section className="ck-form-col">
 
-          <span>
-            Redirection vers la boutique...
-          </span>
+                    <div className="ck-card">
+                        <div className="ck-card-title">
+                            <FiUser size={15} /> <h2>Informations personnelles</h2>
+                        </div>
 
+                        <div className="ck-grid-2">
+                            <Field
+                                label="Nom complet" value={form.firstName}
+                                onChange={(v) => setField("firstName", v)}
+                                error={errors.firstName} placeholder="Mohamed Ben Ali"
+                            />
+                            <Field
+                                label="Numéro de téléphone" value={form.phone}
+                                onChange={(v) => setField("phone", v)}
+                                error={errors.phone} placeholder="21 234 567"
+                                icon={<FiPhone size={14} />} inputMode="tel"
+                                hint="8 chiffres, commence par 2, 5 ou 9."
+                            />
+                        </div>
+                    </div>
+
+                    <div className="ck-card">
+                        <div className="ck-card-title">
+                            <FiMapPin size={15} /> <h2>Adresse de livraison</h2>
+                        </div>
+                        <div className="ck-grid-2">
+                            <SelectField
+                                label="Gouvernorat" value={form.governorate}
+                                onChange={(v) => { setField("governorate", v); setField("delegation", ""); }}
+                                error={errors.governorate}
+                                options={Object.keys(tunisiaLocations)}
+                                placeholder="Sélectionner"
+                            />
+                            <SelectField
+                                label="Délégation" value={form.delegation}
+                                onChange={(v) => setField("delegation", v)}
+                                error={errors.delegation}
+                                options={delegations}
+                                placeholder={form.governorate ? "Sélectionner" : "Choisissez d'abord un gouvernorat"}
+                                disabled={!form.governorate}
+                            />
+                        </div>
+                        <Field
+                            label="Adresse détaillée" value={form.address}
+                            onChange={(v) => setField("address", v)}
+                            error={errors.address}
+                            placeholder="Rue, immeuble, appartement..."
+                        />
+                    </div>
+
+                    <div className="ck-card">
+                        <div className="ck-card-title">
+                            <FiShield size={15} /> <h2>Mode de paiement</h2>
+                        </div>
+                        <div className="ck-grid-2">
+                            <PayOption
+                                active={form.payment === "cod"}
+                                onClick={() => setField("payment", "cod")}
+                                title="Paiement à la livraison"
+                                desc="Payez en espèces à la réception."
+                            />
+                            <PayOption
+                                active={false}
+                                onClick={() => {}}
+                                title="Carte bancaire"
+                                desc="Paiement sécurisé en ligne."
+                                disabled
+                            />
+                        </div>
+                    </div>
+
+                    <div className="ck-trust-strip">
+                        <span><FiTruck size={14} /> Livraison rapide</span>
+                        <span><FiShield size={14} /> Paiement à la livraison</span>
+                    </div>
+
+                    {toast && (
+                        <div className={`ck-toast ck-toast-${toast.type}`}>
+                            <div className="ck-toast-left">
+                                <FiAlertCircle size={15} />
+                                <p>{toast.message}</p>
+                            </div>
+                            <button type="button" onClick={() => setToast(null)} aria-label="Fermer">
+                                <FiX size={15} />
+                            </button>
+                        </div>
+                    )}
+
+                    <button type="submit" className="ck-place-order-btn" disabled={loading}>
+                        {loading ? (
+                            <><FiLoader className="spin-icon" size={15} /> Traitement...</>
+                        ) : (
+                            <><FiLock size={15} /> Confirmer la commande</>
+                        )}
+                    </button>
+                </section>
+
+                {/* SUMMARY */}
+                <aside className="ck-summary-col">
+                    <div className="ck-summary-card">
+                        <div className="ck-summary-header">
+                            <h2>Récapitulatif de commande</h2>
+                            <p>{totalItems} article{totalItems > 1 ? "s" : ""}</p>
+                        </div>
+
+                        <ul className="ck-summary-items">
+                            {cart.map((item) => {
+                                const unitPrice = Number(item.finalPrice || 0);
+                                const total = item.selectedLot ? unitPrice : unitPrice * item.quantity;
+                                return (
+                                    <li key={item.cartItemId} className="ck-summary-item">
+                                        <div className="ck-summary-item-img">
+                                            <img
+                                                src={item.selectedVariant?.image || item.images?.[0] || "/placeholder.png"}
+                                                alt={item.name}
+                                            />
+                                            <span className="ck-summary-item-qty">{item.quantity}</span>
+                                        </div>
+                                        <div className="ck-summary-item-info">
+                                            <p>{item.name}</p>
+                                            <span>{unitPrice} TND × {item.quantity}</span>
+                                        </div>
+                                        <strong>{total} TND</strong>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+
+                        <div className="ck-summary-divider" />
+
+                        <dl className="ck-summary-rows">
+                            <div className="ck-summary-row">
+                                <dt>Sous-total</dt>
+                                <dd>{cartSubtotal} TND</dd>
+                            </div>
+                            <div className="ck-summary-row">
+                                <dt>Livraison</dt>
+                                <dd>{shippingFee > 0 ? `${shippingFee} TND` : "Gratuite"}</dd>
+                            </div>
+                        </dl>
+
+                        <div className="ck-summary-divider" />
+
+                        <div className="ck-summary-total">
+                            <span>Total</span>
+                            <h2>{cartTotal} TND</h2>
+                        </div>
+
+                        <p className="ck-summary-note">
+                            En confirmant, vous acceptez nos conditions générales.
+                        </p>
+                    </div>
+                </aside>
+
+            </form>
         </div>
-
-      </div>
     );
-  }
-
-  return (
-    <div className="checkout-page">
-      {/* TOP */}
-      <div className="checkout-top">
-
-        <Link
-          href="/cart"
-          //href="http://localhost:3000/store/store-one/cart"
-          className="checkout-back"
-        >
-
-          <FiArrowLeft />
-
-          Retour au panier
-
-        </Link>
-
-        <div>
-
-          <h1>
-            Finaliser la commande
-          </h1>
-
-          <p>
-            Complétez vos informations de livraison
-          </p>
-
-        </div>
-
-      </div>
-
-      {/* LAYOUT */}
-      <div className="checkout-layout">
-
-        {/* FORM */}
-        <form
-          onSubmit={handleSubmit}
-          className="checkout-form"
-        >
-
-          <div className="checkout-card">
-
-            <h3>
-              Informations client
-            </h3>
-
-            {/* TRUST */}
-            <div className="checkout-trust">
-
-              <div>
-                <FiTruck />
-                Livraison rapide
-              </div>
-
-              <div>
-                <FiShield />
-                Paiement à la livraison
-              </div>
-
-            </div>
-
-            <div className="double-grid">
-
-              <div className="form-group">
-
-                <label>
-                  Nom complet
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="Votre nom complet"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                />
-
-              </div>
-
-              <div className="form-group">
-
-                <label>
-                  Numéro de téléphone
-                </label>
-
-                <input
-                  type="tel"
-                  placeholder="21 234 567"
-                  value={clientPhone}
-                  onChange={(e) => setClientPhone(e.target.value)}
-                />
-
-              </div>
-
-            </div>
-
-            <div className="double-grid">
-
-    {/* GOVERNORATE */}
-    <div className="form-group">
-
-        <label>
-            Gouvernorat
-        </label>
-
-        <select
-            value={governorate}
-            onChange={(e) => {
-
-                setGovernorate(e.target.value);
-                setDelegation("");
-
-            }}
-        >
-
-            <option value="">
-                Sélectionner
-            </option>
-
-            {Object.keys(tunisiaLocations).map((gov) => (
-
-                <option
-                    key={gov}
-                    value={gov}
-                >
-
-                    {gov}
-
-                </option>
-
-            ))}
-
-        </select>
-
-    </div>
-
-    {/* DELEGATION */}
-    <div className="form-group">
-
-        <label>
-            Délégation
-        </label>
-
-        <select
-            value={delegation}
-            disabled={!governorate}
-            onChange={(e) =>
-                setDelegation(e.target.value)
-            }
-        >
-
-            <option value="">
-                Sélectionner
-            </option>
-
-            {delegations.map((city) => (
-
-                <option
-                    key={city}
-                    value={city}
-                >
-
-                    {city}
-
-                </option>
-
-            ))}
-
-        </select>
-
-    </div>
-
-</div>
-
-<div className="form-group">
-
-    <label>
-        Adresse détaillée
-    </label>
-
-    <input
-        type="text"
-        placeholder="Rue, immeuble, appartement..."
-        value={clientAddress}
-        onChange={(e) =>
-            setClientAddress(e.target.value)
-        }
-    />
-
-</div>
-
-          </div>
-
-          {/* TOAST */}
-          {toast && (
-
-            <div className={`checkout-toast ${toast.type}`}>
-              <div className="toast-left">
-
-                <div className="toast-icon">
-                  <FiAlertCircle />
-                </div>
-
-                <p>
-                  {toast.message}
-                </p>
-
-              </div>
-
-              <button
-                type="button"
-                className="toast-close"
-                onClick={() => setToast(null)}
-              >
-                <FiX />
-              </button>
-            </div>
-          )}
-
-          {/* BUTTON */}
-          <button
-            type="submit"
-            className="place-order-btn"
-            disabled={loading}
-          >
-
-            {loading ? (
-              <>
-                <FiLoader className="spin-icon" />
-                Traitement...
-              </>
-            ) : (
-              <>
-                Confirmer la commande
-              </>
-            )}
-
-          </button>
-
-        </form>
-
-        {/* SUMMARY */}
-        <div className="checkout-summary">
-
-          <div className="checkout-summary-card">
-            <h3>
-              Résumé de la commande
-            </h3>
-
-            {/* ITEMS */}
-            <div className="summary-items">
-
-              {cart.map((item) => (
-
-                <div
-                  key={item.id}
-                  className="summary-item"
-                >
-
-                  <div>
-
-                    <h4>
-                      {item.name}
-                    </h4>
-
-                    <p>
-                      Quantité :{" "}{item.quantity}
-                    </p>
-
-                  </div>
-
-                  <strong>
-                    {item.selectedLot ? Number(item.finalPrice || 0) : Number(item.finalPrice || 0) * item.quantity}{" "} TND
-                  </strong>
-
-                </div>
-              ))}
-
-            </div>
-
-            <div className="summary-divider"></div>
-
-            {/* ROW */}
-            <div className="summary-row">
-
-              <span>
-                Sous-total
-              </span>
-
-              <strong>
-                {cartSubtotal} TND
-              </strong>
-
-            </div>
-
-            <div className="summary-row">
-
-              <span>
-                Livraison
-              </span>
-
-              <strong>
-                {shippingFee} TND
-              </strong>
-
-            </div>
-
-            <div className="summary-divider"></div>
-
-            {/* TOTAL */}
-            <div className="summary-total">
-
-              <span>
-                Total
-              </span>
-
-              <h2>
-                {cartTotal} TND
-              </h2>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
 }

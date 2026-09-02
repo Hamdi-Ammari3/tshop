@@ -1,0 +1,298 @@
+/* ===========================
+   SECTION
+=========================== */
+
+.category-blocks{
+    margin:70px auto;
+    padding:0 16px;
+}
+
+/* ===========================
+   HEADER
+=========================== */
+
+.category-blocks-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    margin-bottom:30px;
+}
+
+.category-blocks-header h2{
+    margin:0;
+    font-size:34px;
+    font-weight:800;
+    color:#111827;
+    letter-spacing:-0.02em;
+}
+
+.category-blocks-header p{
+    margin-top:8px;
+    color:#6b7280;
+    font-size:15px;
+    line-height:1.6;
+}
+
+/* ===========================
+   GRID
+=========================== */
+
+.category-blocks-grid{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:22px;
+}
+
+/* ===========================
+   CARD
+=========================== */
+.category-card{
+
+    background:#fff;
+
+    border-radius:24px;
+
+    padding:20px;
+
+    border:1px solid #edf1f5;
+
+    box-shadow:
+        0 8px 30px rgba(15,23,42,.05);
+
+    transition:
+        transform .25s ease,
+        box-shadow .25s ease;
+
+    display:block;
+    text-decoration:none;
+    color:inherit;
+}
+
+.category-card:hover{
+
+    transform:translateY(-6px);
+
+    box-shadow:
+        0 20px 45px rgba(15,23,42,.10);
+}
+
+/* ===========================
+   TITLE
+=========================== */
+
+.category-card-title{
+
+    margin:0;
+
+    font-size:18px;
+
+    font-weight:700;
+
+    color:#111827;
+
+    line-height:1.45;
+
+    min-height:54px;
+}
+
+/* ===========================
+   IMAGES
+=========================== */
+
+.category-card-images{
+
+    margin-top:18px;
+
+    display:grid;
+
+    grid-template-columns:repeat(2,1fr);
+
+    gap:8px;
+}
+
+.category-image-box{
+
+    position:relative;
+
+    aspect-ratio:1;
+
+    overflow:hidden;
+
+    border-radius:16px;
+
+    background:#f3f4f6;
+}
+
+.category-image-box img{
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
+
+    display:block;
+
+    transition:
+        transform .45s ease;
+}
+
+.category-card:hover
+.category-image-box img{
+
+    transform:scale(1.08);
+}
+
+.category-image-placeholder{
+
+    aspect-ratio:1;
+
+    border-radius:16px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #f4f6f8,
+            #eceff3
+        );
+}
+
+/* ===========================
+   DESCRIPTION
+=========================== */
+
+.category-card-description{
+
+    margin:18px 0 0;
+
+    color:#6b7280;
+
+    font-size:14px;
+
+    line-height:1.6;
+
+    min-height:66px;
+}
+
+/* ===========================
+   CTA
+=========================== */
+
+.category-card-link{
+
+    margin-top:18px;
+
+    display:inline-flex;
+
+    align-items:center;
+
+    gap:8px;
+
+    text-decoration:none;
+
+    color:#006de2;
+
+    font-size:14px;
+
+    font-weight:700;
+
+    transition:all .25s ease;
+}
+
+.category-card-link svg{
+
+    transition:transform .25s ease;
+}
+
+.category-card:hover
+.category-card-link{
+
+    color:#0058ba;
+}
+
+.category-card:hover
+.category-card-link svg{
+
+    transform:translateX(4px);
+}
+
+/* ===========================
+   TABLET
+=========================== */
+
+@media (max-width:1100px){
+
+.category-blocks-grid{
+
+    grid-template-columns:repeat(3,1fr);
+
+}
+
+}
+
+/* ===========================
+   SMALL TABLET
+=========================== */
+
+@media (max-width:850px){
+
+.category-blocks-header{
+
+    display:block;
+}
+
+.category-blocks-header h2{
+
+    font-size:28px;
+}
+
+.category-blocks-grid{
+
+    grid-template-columns:repeat(2,1fr);
+
+}
+
+}
+
+/* ===========================
+   MOBILE
+=========================== */
+
+@media (max-width:600px){
+
+.category-blocks{
+
+    margin:50px auto;
+
+    padding:0 10px;
+}
+
+.category-blocks-grid{
+
+    grid-template-columns:1fr;
+
+    gap:18px;
+}
+
+.category-blocks-header h2{
+
+    font-size:24px;
+}
+
+.category-card{
+
+    padding:18px;
+}
+
+.category-card-title{
+
+    min-height:auto;
+
+    font-size:17px;
+}
+
+.category-card-description{
+
+    min-height:auto;
+}
+
+}

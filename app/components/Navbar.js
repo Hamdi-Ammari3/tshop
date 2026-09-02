@@ -1,173 +1,188 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { useAuth } from "../../context/AuthContext";
 import Link from "next/link";
-import {doc,getDoc} from "firebase/firestore";
-import { DB } from "../../lib/firebaseConfig";
-import {useMarketplaceCart} from '../../context/MarketplaceCartContext';
-import {FiShoppingCart} from "react-icons/fi";
+import { useAuth } from "../../context/AuthContext";
+import { useMarketplaceCart } from "../../context/MarketplaceCartContext";
+import { signOut } from "firebase/auth";
+import { auth } from "../../lib/firebaseConfig";
+import { FiSearch, FiBell, FiShoppingCart, FiUser, FiLogOut, FiPhone, FiGrid } from "react-icons/fi";
 import { FaStore } from "react-icons/fa";
-import logo from "../../public/website-logo.png"
+import logo from "../../public/logo.png";
+import './navbar.css';
 
 export default function Navbar() {
 
-  const { user, loading } = useAuth();
-  const {cartCount} = useMarketplaceCart();
+    const { user, loading } = useAuth();
+    const { cartCount } = useMarketplaceCart();
 
-  const [hasStore, setHasStore] = useState(false);
-  const [checkingStore, setCheckingStore] = useState(true);
+    console.log(user)
 
+    const [search, setSearch] = useState("");
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
 
-  /* CHECK STORE */
-  useEffect(() => {
+    // Derive values from user (already in AuthContext — no extra Firestore read needed)
+    const hasStore = !!user?.storeId;
+    const userInitial = (user?.name?.charAt(0) || "U").toUpperCase();
+    const userName = user?.name || "Utilisateur";
+    const userPhone = user?.phone || "";
 
-    async function checkStore() {
+    const handleLogout = async () => {
+        setMenuOpen(false);
+        await signOut(auth);
+    };
 
-      if (!user) {
-        setHasStore(false);
-        setCheckingStore(false);
-        return;
-      }
-
-      try {
-
-        const userRef = doc(
-          DB,
-          "users",
-          user.uid
-        );
-
-        const userSnap = await getDoc(userRef);
-
-        if (userSnap.exists()) {
-
-          const userData = userSnap.data();
-
-          setHasStore(!!userData.storeId);
-
-        } else {
-
-          setHasStore(false);
+    // Close menu on outside click
+    useEffect(() => {
+        function handleClickOutside(e) {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setMenuOpen(false);
+            }
         }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
-      } catch (error) {
+    // Close menu on Escape
+    useEffect(() => {
+        function handleEsc(e) {
+            if (e.key === "Escape") setMenuOpen(false);
+        }
+        document.addEventListener("keydown", handleEsc);
+        return () => document.removeEventListener("keydown", handleEsc);
+    }, []);
 
-        console.log(error);
+    return (
+        <header className="navbar">
+            <div className="navbar-container">
 
-        setHasStore(false);
-
-      } finally {
-
-        setCheckingStore(false);
-      }
-    }
-
-    checkStore();
-
-  }, [user]);
-
-  /* USER LETTER */
-  const userLetter = user?.displayName?.charAt(0)?.toUpperCase() || "U";
-
-  return (
-    <header className="navbar">
-
-      <div className="navbar-container">
-
-        {/* LEFT */}
-        <Link
-          href="/"
-          className="navbar-logo"
-        >
-          <Image
-            src={logo}
-            alt="T-Shop"
-            priority
-            className="navbar-logo-image"
-          />
-        </Link>
-
-        {/* ACTIONS */}
-        <div className="navbar-actions">
-
-          {/* NOT LOGGED */}
-          {!loading && !user && (
-            <>
-              <Link
-                href="/onboarding"
-                className="create-btn mobile-visible"
-              >
-                Créer
-              </Link>
-
-              <Link
-                href="/login"
-                className="signin-btn desktop-only"
-              >
-                Connexion
-              </Link>
-            </>
-          )}
-
-          {/* LOGGED */}
-          {!loading && user && !checkingStore && (
-            <>
-              {hasStore ? (
-                <Link
-                  href="/dashboard"
-                  className="dashboard-btn"
-                >
-
-                  <FaStore />
-
-                  <span>
-                    Store
-                  </span>
-
+                {/* LOGO */}
+                <Link href="/" className="navbar-logo">
+                    <Image src={logo} alt="TuniShop" priority className="navbar-logo-image" />
                 </Link>
 
-              ) : (
+                {/* SEARCH */}
+                <form className="navbar-search" onSubmit={(e) => e.preventDefault()}>
+                    <input
+                        type="search"
+                        placeholder="Rechercher un produit, une boutique..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                    <button type="submit"><FiSearch /></button>
+                </form>
 
-                <Link
-                  href="/onboarding"
-                  className="create-btn mobile-visible"
-                >
-                  Créer
-                </Link>
+                {/* RIGHT */}
+                <div className="navbar-right">
 
-              )}
+                    {/* NOT LOGGED IN */}
+                    {!loading && !user && (
+                        <Link href="/login" className="navbar-login-btn">
+                            <FiUser />
+                            <span>Connexion</span>
+                        </Link>
+                    )}
 
-              <div className="navbar-avatar">
-                {userLetter}
-              </div>
-            </>
-          )}
+                    {/* LOGGED IN */}
+                    {!loading && user && (
 
-          {/* CART */}
-          <div className="store-navbar-actions">
+                        <>
+                            {hasStore && (
+                                <Link href="/dashboard" className="dashboard-btn">
+                                    <FaStore />
+                                    <span>Dashboard</span>
+                                </Link>
+                            )}
 
-            <Link
-              href="/cart"
-              className="store-cart-btn"
-            >
+                            {/* AVATAR + DROPDOWN */}
+                            <div className="navbar-avatar-wrap" ref={menuRef}>
 
-              <FiShoppingCart />
+                                <button
+                                    className="navbar-avatar"
+                                    onClick={() => setMenuOpen((o) => !o)}
+                                    aria-expanded={menuOpen}
+                                    aria-label="Menu utilisateur"
+                                >
+                                    {userInitial}
+                                </button>
 
-              {cartCount > 0 && (
-                <span>
-                  {cartCount}
-                </span>
-              )}
+                                {menuOpen && (
+                                    <div className="navbar-menu">
 
-            </Link>
+                                        {/* USER INFO */}
+                                        <div className="navbar-menu-user">
+                                            <div className="navbar-menu-avatar">{userInitial}</div>
+                                            <div className="navbar-menu-info">
+                                                <p className="navbar-menu-name">{userName}</p>
+                                                {userPhone && (
+                                                    <p className="navbar-menu-phone">
+                                                        <FiPhone size={11} />
+                                                        {userPhone}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
 
-          </div>
+                                        <div className="navbar-menu-divider" />
 
-        </div>
-      </div>
+                                        {/* LINKS */}
+                                        {hasStore && (
+                                            <Link
+                                                href="/dashboard"
+                                                className="navbar-menu-item"
+                                                onClick={() => setMenuOpen(false)}
+                                            >
+                                                <FiGrid size={15} />
+                                                Dashboard
+                                            </Link>
+                                        )}
 
-    </header>
-  );
+                                        {!hasStore && (
+                                            <Link
+                                                href="/onboarding"
+                                                className="navbar-menu-item"
+                                                onClick={() => setMenuOpen(false)}
+                                            >
+                                                <FaStore size={14} />
+                                                Créer ma boutique
+                                            </Link>
+                                        )}
+
+                                        <div className="navbar-menu-divider" />
+
+                                        <button className="navbar-menu-logout" onClick={handleLogout}>
+                                            <FiLogOut size={15} />
+                                            Déconnexion
+                                        </button>
+
+                                    </div>
+                                )}
+
+                            </div>
+                        </>
+
+                    )}
+
+                    {/* NOTIFICATIONS 
+                    <button className="navbar-icon-btn">
+                        <FiBell />
+                        <span className="navbar-dot" />
+                    </button>
+                    */}
+
+                    {/* CART */}
+                    <Link href="/cart" className="navbar-icon-btn">
+                        <FiShoppingCart />
+                        {cartCount > 0 && (
+                            <span className="navbar-count">{cartCount}</span>
+                        )}
+                    </Link>
+
+                </div>
+
+            </div>
+        </header>
+    );
 }

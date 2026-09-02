@@ -1,2697 +1,988 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {collection,addDoc,serverTimestamp} from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { DB } from "../../../../lib/firebaseConfig";
 import { uploadToCloudinary } from "../../../../lib/uploadToCloudinary";
-import {useStore} from "../../../../context/StoreContext";
-import {categories} from '../../../../data/categories';
+import { useStore } from "../../../../context/StoreContext";
+import { categories } from "../../../../data/categories";
 import Link from "next/link";
-import {FiArrowLeft,FiUpload,FiX,FiStar,FiAlertCircle,FiCheckCircle,FiChevronDown,FiImage,FiTag,FiPackage,FiPercent,FiFileText,FiLayers,FiPlus,FiTrash2 } from "react-icons/fi";
-import { LuBoxes,LuArchive } from "react-icons/lu";
+import {
+    FiArrowLeft, FiUpload, FiX, FiStar, FiAlertCircle, FiCheckCircle,
+    FiChevronDown, FiImage, FiTag, FiPackage, FiPercent, FiFileText,
+    FiLayers, FiPlus, FiTrash2, FiLoader, FiSave,
+} from "react-icons/fi";
+import { LuBoxes, LuArchive } from "react-icons/lu";
 import "./newProduct.css";
+
+/* ─── HELPERS ─────────────────────────────────────────── */
+
+function formatPrice(value) {
+    return new Intl.NumberFormat("fr-TN", {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3,
+    }).format(Number(value || 0));
+}
+
+function buildPriceData({ hasDiscount, price, discountedPrice }) {
+    if (hasDiscount) {
+        return { hasDiscount: true, price: Number(discountedPrice || 0), oldPrice: Number(price || 0) };
+    }
+    return { hasDiscount: false, price: Number(price || 0), oldPrice: null };
+}
+
+function SectionCard({ icon: Icon, title, subtitle, rightSlot, children }) {
+    return (
+        <div className="np-card">
+            <div className="np-card-head">
+                <div className="np-card-title-wrap">
+                    <div className="np-card-icon"><Icon size={18} /></div>
+                    <div>
+                        <h3>{title}</h3>
+                        {subtitle && <p>{subtitle}</p>}
+                    </div>
+                </div>
+                {rightSlot}
+            </div>
+            <div className="np-card-body">{children}</div>
+        </div>
+    );
+}
+
+function Toggle({ checked, onChange }) {
+    return (
+        <label className="np-toggle">
+            <input type="checkbox" checked={checked} onChange={onChange} />
+            <span className="np-toggle-track" />
+        </label>
+    );
+}
+
+function Toast({ toast, onClose }) {
+    if (!toast) return null;
+    const isSuccess = toast.type === "success";
+    return (
+        <div className={`np-toast np-toast-${toast.type}`}>
+            <div className="np-toast-left">
+                <div className={`np-toast-icon np-toast-icon-${toast.type}`}>
+                    {isSuccess ? <FiCheckCircle size={16} /> : <FiAlertCircle size={16} />}
+                </div>
+                <p>{toast.message}</p>
+            </div>
+            <button type="button" className="np-toast-close" onClick={onClose}>
+                <FiX size={14} />
+            </button>
+        </div>
+    );
+}
+
+/* ── Variant combo content ── */
+function VariantComboContent({ variant, onVariantChange, onVariantImageChange }) {
+    return (
+        <div className="np-combo-content">
+            {/* Image */}
+            <label className="np-combo-img-upload">
+                {variant.imagePreview
+                    ? <img src={variant.imagePreview} alt="" />
+                    : <><FiUpload size={20} /><span>Image</span></>}
+                <input
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(e) => {
+                        onVariantImageChange(variant.id, e.target.files?.[0]);
+                        e.target.value = "";
+                    }}
+                />
+            </label>
+
+            {/* Fields */}
+            <div className="np-combo-fields">
+                <div className="np-combo-row">
+                    <div className="np-field">
+                        <label>Prix (TND)</label>
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="0.000"
+                            value={variant.price ?? ""}
+                            onChange={(e) => onVariantChange(variant.id, "price", e.target.value)}
+                        />
+                    </div>
+                    <div className="np-field">
+                        <label>Stock</label>
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={variant.inventory ?? ""}
+                            onChange={(e) => onVariantChange(variant.id, "inventory", e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Discount toggle */}
+                <div className="np-combo-discount-toggle">
+                    <div className="np-combo-discount-left">
+                        <div className="np-mini-icon"><FiPercent size={13} /></div>
+                        <div>
+                            <p className="np-combo-discount-title">Promotion</p>
+                            <p className="np-combo-discount-sub">Activer un prix réduit</p>
+                        </div>
+                    </div>
+                    <Toggle
+                        checked={variant.hasDiscount}
+                        onChange={(e) => onVariantChange(variant.id, "hasDiscount", e.target.checked)}
+                    />
+                </div>
+
+                {/* Discount fields */}
+                {variant.hasDiscount && (
+                    <div className="np-combo-row">
+                        <div className="np-field">
+                            <label>Prix original</label>
+                            <input
+                                type="number"
+                                min="0"
+                                placeholder="0.000"
+                                value={variant.oldPrice ?? ""}
+                                onChange={(e) => onVariantChange(variant.id, "oldPrice", e.target.value)}
+                            />
+                        </div>
+                        <div className="np-field">
+                            <label>Prix promotionnel</label>
+                            <input
+                                type="number"
+                                min="0"
+                                placeholder="0.000"
+                                value={variant.price ?? ""}
+                                onChange={(e) => onVariantChange(variant.id, "price", e.target.value)}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ── Variant combo row ── */
+function VariantComboRow({
+    variant, hasNestedVariants, isOpen, onToggle,
+    onVariantChange, onVariantImageChange,
+}) {
+    const values = variant.options.map((o) => o.value);
+    const label  = hasNestedVariants ? values[1] : values[0];
+
+    return (
+        <div className="np-combo-item">
+            <button type="button" className="np-combo-trigger" onClick={onToggle}>
+                <div className="np-combo-trigger-left">
+                    <div className="np-combo-avatar">
+                        {variant.imagePreview
+                            ? <img src={variant.imagePreview} alt="" />
+                            : <FiImage size={16} />}
+                    </div>
+                    <div>
+                        <p className="np-combo-label">{label}</p>
+                        <p className="np-combo-sub">
+                            {variant.price ? `${formatPrice(variant.price)} TND` : "Prix non défini"}
+                            {" · "}
+                            {variant.inventory !== "" ? `${variant.inventory} en stock` : "Stock non défini"}
+                        </p>
+                    </div>
+                </div>
+                <FiChevronDown size={15} className={isOpen ? "np-rotate" : ""} />
+            </button>
+            {isOpen && (
+                <VariantComboContent
+                    variant={variant}
+                    onVariantChange={onVariantChange}
+                    onVariantImageChange={onVariantImageChange}
+                />
+            )}
+        </div>
+    );
+}
+
+/* ─── MAIN PAGE ───────────────────────────────────────── */
 
 export default function NewProductPage() {
 
-  const router = useRouter();
-  const { store } = useStore();
+    const router = useRouter();
+    const { store } = useStore();
 
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState(null);
-  const [subcategory,setSubcategory] = useState(null);
-  const [description, setDescription] = useState("");
-  const [images, setImages] = useState([]);
-  const [price, setPrice] = useState("");
-  const [hasDiscount, setHasDiscount] = useState(false);
-  const [discountedPrice,setDiscountedPrice] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentUploadIndex,setCurrentUploadIndex] = useState(0);
-  const [trackInventory, setTrackInventory] = useState(true);
-  const [inventory,setInventory] = useState("");
-  const [variantDrafts, setVariantDrafts] = useState({});
-  const [variantOptions,setVariantOptions] = useState([]);
-  const [variantRows,setVariantRows] = useState([]);
-  const [openedGroups,setOpenedGroups] = useState({});
-  const [enableLots,setEnableLots] = useState(false);
-  const [lotRules,setLotRules] = useState([]);
-  const [toast, setToast] = useState(null);
+    const imageInputRef = useRef(null);
 
-  const getGroupKey = (index) => `group-${index}`;
-  const getVariantKey = (id) => `variant-${id}`;
+    const [name,            setName]           = useState("");
+    const [category,        setCategory]       = useState(null);
+    const [subcategory,     setSubcategory]    = useState(null);
+    const [description,     setDescription]    = useState("");
+    const [images,          setImages]         = useState([]);
+    const [price,           setPrice]          = useState("");
+    const [hasDiscount,     setHasDiscount]    = useState(false);
+    const [discountedPrice, setDiscountedPrice]= useState("");
+    const [inventory,       setInventory]      = useState("");
+    const [variantOptions,  setVariantOptions] = useState([]);
+    const [variantRows,     setVariantRows]    = useState([]);
+    const [variantDrafts,   setVariantDrafts]  = useState({});
+    const [openedGroups,    setOpenedGroups]   = useState({});
+    const [enableLots,      setEnableLots]     = useState(false);
+    const [lotRules,        setLotRules]       = useState([]);
+    const [loading,         setLoading]        = useState(false);
+    const [uploadProgress,  setUploadProgress] = useState(0);
+    const [currentUploadIndex, setCurrentUploadIndex] = useState(0);
+    const [toast,           setToast]          = useState(null);
 
-  //Category selec
-  const handleCategorySelect = (selectedCategory) => {
+    const MAX_VARIANT_OPTIONS = 2;
+    const hasNestedVariants   = variantOptions.length > 1;
 
-    setCategory(selectedCategory);
-
-    setSubcategory(null);
-
-  };
-
-  //FORMAT PRICE
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat(
-      "fr-TN",
-      {
-        minimumFractionDigits: 3,
-        maximumFractionDigits: 3,
-      }
-    ).format(Number(price || 0));
-  };
-
-  // BUILD FINAL PRICE
-  const buildPriceData = ({hasDiscount,price,discountedPrice}) => {
-
-    // WITH PROMOTION
-    if (hasDiscount) {
-
-      return {
-        hasDiscount: true,
-
-        // FINAL SELLING PRICE
-        price: Number(discountedPrice || 0),
-
-        // ORIGINAL CROSSED PRICE
-        oldPrice: Number(price || 0),
-      };
-
-    }
-
-    // WITHOUT PROMOTION
-    return {
-
-      hasDiscount: false,
-
-      // NORMAL SELLING PRICE
-      price: Number(price || 0),
-
-      // NO CROSSED PRICE
-      oldPrice: null,
+    const showToast = (message, type = "error") => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
     };
 
-  };
+    /* ── images ── */
 
-  //TOAST 
-  const showToast = (message,type = "error") => {
-    setToast({message,type});
-
-    setTimeout(() => {
-      setToast(null);
-    }, 3500);
-  };
-
-  //Handle files
-  const handleFiles = (files) => {
-
-    if (!files || files.length === 0) {
-      return;
-    }
-
-    const selectedFiles = Array.from(files);
-
-    setImages((prev) => {
-      const currentCount = prev.length;
-
-      if (currentCount >= 5) {
-        showToast("Maximum 5 images atteint.");
-        return prev;
-      }
-
-      const remainingSlots = 5 - currentCount;
-
-      const allowedFiles = selectedFiles.slice(0,remainingSlots);
-
-      const validImages = [];
-
-      for (const file of allowedFiles) {
-        if (!file.type.startsWith("image/")) {
-          continue;
-        }
-
-        const alreadyExists = prev.some((img) => img.file.name === file.name && img.file.size === file.size);
-
-        if (alreadyExists) {
-          continue
-        }
-
-        const preview = URL.createObjectURL(file);
-
-        validImages.push({
-          id: crypto.randomUUID(),
-          file,
-          preview,
+    const handleFiless = (files) => {
+        if (!files?.length) return;
+        setImages((prev) => {
+            if (prev.length >= 5) { showToast("Maximum 5 images atteint."); return prev; }
+            const slots = 5 - prev.length;
+            const added = [];
+            for (const file of Array.from(files).slice(0, slots)) {
+                if (!file.type.startsWith("image/")) continue;
+                if (prev.some((i) => i.file.name === file.name && i.file.size === file.size)) continue;
+                added.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
+            }
+            return [...prev, ...added];
         });
-
-      }
-
-      return [
-        ...prev,
-        ...validImages,
-      ];
-    });
-  };
-
-  //Clean blob
-  useEffect(() => {
-
-    return () => {
-
-      images.forEach((img) => {
-
-        if (img.preview?.startsWith("blob:")) {
-
-          URL.revokeObjectURL(img.preview);
-
-        }
-
-      });
-
     };
 
-  }, [images]);
+    const handleFiles = (files, inputRef) => {
+    if (!files?.length) return;
 
-  // CLEAN VARIANT BLOBS
-  useEffect(() => {
+    const selected = Array.from(files);
 
-    return () => {
-
-      variantRows.forEach((variant) => {
-
-        if (variant.imagePreview?.startsWith("blob:")) {
-
-          URL.revokeObjectURL(
-            variant.imagePreview
-          );
-
+    // Read current images synchronously via ref, NOT inside updater
+    setImages((prev) => {
+        if (prev.length >= 5) {
+            // Schedule toast AFTER state update settles — never inside updater
+            setTimeout(() => showToast("Maximum 5 images atteint."), 0);
+            return prev;
         }
 
-      });
+        const slots  = 5 - prev.length;
+        const added  = [];
+        let skipped  = 0;
 
-    };
+        for (const file of selected.slice(0, slots)) {
+            if (!file.type.startsWith("image/")) { skipped++; continue; }
+            // Safe duplicate check — guard against missing .file
+            const isDuplicate = prev.some(
+                (i) => i.file && i.file.name === file.name && i.file.size === file.size
+            );
+            if (isDuplicate) { skipped++; continue; }
+            added.push({ id: crypto.randomUUID(), file, preview: URL.createObjectURL(file) });
+        }
 
-  }, []);
+        if (skipped > 0 && added.length === 0) {
+            setTimeout(() => showToast("Aucune nouvelle image valide sélectionnée."), 0);
+        }
 
-  //Remove image
-  const removeImage = (index) => {
-
-    setImages((prev) => {
-
-      const imageToRemove = prev[index];
-
-      if (imageToRemove?.preview?.startsWith("blob:")) {
-
-        URL.revokeObjectURL(imageToRemove.preview);
-
-      }
-
-      return prev.filter((_, i) => i !== index);
-
-    });
-  };
-
-  //THUMBNAIL
-  const makeThumbnail = (index) => {
-
-    setImages((prev) => {
-
-      const copy = [...prev];
-
-      const [selected] = copy.splice(index, 1);
-
-      copy.unshift(selected);
-
-      return copy;
-
+        return added.length ? [...prev, ...added] : prev;
     });
 
-  };
-
-  // VARIANT IMAGE
-  const handleVariantImage = (variantId,file) => {
-
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      showToast("Fichier image invalide.");
-      return;
-    }
-
-    const preview = URL.createObjectURL(file);
-
-    setVariantRows((prev) =>
-      prev.map((variant) =>
-        variant.id === variantId
-          ? {
-              ...variant,
-              imageFile: file,
-              imagePreview: preview,
-            }
-          : variant
-      )
-    );
-
-  };
-
-  const MAX_VARIANT_OPTIONS = 2;
-
-  // ADD VARIANT OPTION
-  const addVariantOption = () => {
-
-    if (variantOptions.length >= MAX_VARIANT_OPTIONS) {
-      showToast("Maximum 2 variantes.");
-      return;
-    }
-
-    setVariantOptions((prev) => [
-
-      ...prev,
-
-      {
-        id: crypto.randomUUID(),
-        name: "",
-        values: [],
-      }
-
-    ]);
-
-  };
-
-  // REMOVE VARIANT OPTION
-  const removeVariantOption = (id) => {
-
-    setVariantOptions((prev) =>
-      prev.filter((option) => option.id !== id)
-    );
-
-  };
-
-  // UPDATE OPTION NAME
-  const updateVariantName = (id,value) => {
-
-    setVariantOptions((prev) => prev.map((option) =>
-      option.id === id ? {
-        ...option,
-        name: value,
-      }
-      : option
-    ));
-
-  };
-
-  //UPDATE OPTION VALUE */
-  const updateVariantValue = (optionId,valueIndex,value) => {
-
-    setVariantOptions((prev) => prev.map((option) => {
-      if (option.id !== optionId) {
-        return option;
-      }
-
-      const updatedValues = [
-        ...option.values,
-      ];
-
-      updatedValues[valueIndex] =
-        value;
-
-      return {
-        ...option,
-        values: updatedValues,
-      };
-
-    }));
-  };
-
-  //ADD OPTION VALUE
-  const addVariantValue = (optionId,value) => {
-
-    if (!value.trim()) return;
-
-    setVariantOptions((prev) => prev.map((option) => {
-
-      if (option.id !== optionId) {
-        return option;
-      }
-
-      return {
-        ...option,
-        values: option.values.includes(value.trim()) ? option.values : [
-          ...option.values,
-          value.trim(),
-        ],
-      };
-
-    }))
-  };
-
-  //REMOVE OPTION VALUE
-  const removeVariantValue = (optionId,valueIndex) => {
-
-    setVariantOptions((prev) => prev.map((option) => {
-      if (option.id !== optionId) {
-        return option;
-      }
-
-      return {
-        ...option,
-        values: option.values.filter((_, index) => index !== valueIndex)
-      };
-
-    }));
-  };
-
-  const generateVariantCombinations = (options,existingRows = []) => {
-
-    if (!options.length) {
-      return [];
-    }
-
-    const combinations = [];
-
-    const generate = (index, currentOptions) => {
-
-      if (index === options.length) {
-
-        const existingVariant = existingRows.find((row) => JSON.stringify(row.options) === JSON.stringify(currentOptions));
-
-        const generalPriceData = buildPriceData({
-          hasDiscount,
-          price,
-          discountedPrice,
-        });
-
-        combinations.push({
-
-          id: existingVariant?.id || crypto.randomUUID(),
-
-          options: currentOptions,
-
-          inventory: existingVariant?.inventory ?? (combinations.length === 0 ? Number(inventory || 0) : 0),
-
-          price: existingVariant ? existingVariant.price : generalPriceData.price,
-
-          oldPrice: existingVariant ? existingVariant.oldPrice : generalPriceData.oldPrice,
-
-          hasDiscount: existingVariant ? existingVariant.hasDiscount : hasDiscount,
-
-          image: existingVariant?.image ?? "",
-
-          imageFile: existingVariant?.imageFile ?? null,
-
-          imagePreview: existingVariant?.imagePreview ?? "",
-
-          active: true,
-
-        });
-
-        return;
-
-      }
-
-      const option = options[index];
-
-      option.values.forEach((value) => {
-
-        generate(index + 1, [
-          ...currentOptions,
-          {
-            name: option.name,
-            value,
-            position: index,
-          }
-        ]);
-
-      });
-
+    // Reset input synchronously so the same file can be re-selected
+    if (inputRef?.current) inputRef.current.value = "";
     };
 
-    generate(0, []);
-
-    return combinations;
-
-  };
-
-  // ADD LOT
-  const addLotRule = () => {
-
-    setLotRules((prev) => [
-
-      ...prev,
-
-      {
-        id: crypto.randomUUID(),
-        quantity: "",
-        price: "",
-      }
-
-    ]);
-
-  };
-
-  // REMOVE LOT
-  const removeLotRule = (id) => {
-
-    setLotRules((prev) =>
-      prev.filter(
-        (lot) => lot.id !== id
-      )
-    );
-
-  };
-
-  // UPDATE LOT
-  const updateLotRule = (id,field,value,extra = {}) => {
-
-    setLotRules((prev) =>
-      prev.map((lot) =>
-        lot.id === id
-          ? {
-              ...lot,
-              [field]: value,
-              ...extra,
-            }
-          : lot
-      )
-    )
-  };
-
-  const updateVariantInventory = (index,value) => {
-
-    setVariantRows((prev) =>
-      prev.map((row, rowIndex) =>
-        rowIndex === index
-          ? {
-              ...row,
-              inventory: Number(value)
-            }
-          : row
-      )
-    );
-
-  };
-
-  const hasVariants = variantOptions.length > 0;
-
-  useEffect(() => {
-
-    const validOptions = variantOptions.map((option) => ({
-
-      ...option,
-
-      values: option.values.filter((value) =>value.trim()),
-
-    })).filter((option) => option.name.trim() && option.values.length > 0);
-
-    if (!validOptions.length) {
-
-      setVariantRows([]);
-
-      return;
-
-    }
-
-    setVariantRows((prevRows) => generateVariantCombinations(validOptions,prevRows));
-
-  }, [variantOptions,price,discountedPrice,hasDiscount,inventory]);
-
-  //SUBMIT 
-  const handleSubmit = async (e) => {
-
-    e.preventDefault();
-
-    if (loading) return;
-
-    if (!name.trim()) {
-      showToast("Veuillez saisir le nom du produit.");
-      return;
-    }
-
-    if (!description.trim()) {
-      showToast("Veuillez saisir une description.");
-      return;
-    }
-
-    if (images.length === 0) {
-      showToast("Veuillez ajouter des images.");
-      return;
-    }
-
-    if (!category) {
-      showToast("Veuillez choisir une catégorie.");
-      return;
-    }
-
-    if (!subcategory) {
-      showToast("Veuillez choisir une sous-catégorie.");
-      return;
-    }
-
-    if (!price || Number(price) <= 0) {
-      showToast("Le prix doit être supérieur à 0.");
-      return;
-    }
-
-
-    if (hasDiscount) {
-      if (!discountedPrice ||Number(discountedPrice) <= 0) {
-        showToast("Veuillez saisir le prix promotionnel.");
-        return;
-      }
-
-      if (Number(discountedPrice) >= Number(price)) {
-        showToast("Le prix promotionnel doit être inférieur au prix original.");
-        return;
-      }
-    }
-
-    if (trackInventory && !variantRows.length > 0) {
-
-      if (!inventory ||Number(inventory) <= 0) {
-
-        showToast("Le stock doit être supérieur à 0.");
-
-        return;
-      }
-    }
-
-    /* VALIDATE VARIANT STRUCTURE */
-    if (variantOptions.length > 0) {
-
-      const invalidOption = variantOptions.find((option) => !option.name.trim() || option.values.filter((value) => value.trim()).length === 0);
-
-      if (invalidOption) {
-        showToast("Chaque variante doit avoir un nom et au moins une valeur.");
-        return;
-      }
-
-      if (variantRows.length === 0) {
-        showToast("Ajoutez au moins une combinaison de variantes.");
-        return;
-      }
-
-    }
-
-    // VALIDATE VARIANTS
-    if (variantRows.length > 0) {
-
-      for (const variant of variantRows) {
-
-        const finalVariantPrice = variant.price;
-
-        if (!variant.image && !variant.imageFile) {
-          showToast("Chaque variante doit avoir une image.");
-          return;
-        }
-
-        if (!finalVariantPrice || Number(finalVariantPrice) <= 0) {
-          showToast("Chaque variante doit avoir un prix valide.");
-          return;
-        }
-
-        if (variant.hasDiscount && (!variant.oldPrice ||Number(variant.oldPrice) <= 0)) {
-          showToast("Veuillez saisir le prix original des variantes.");
-          return;
-        }
-
-        if (variant.hasDiscount && Number(variant.oldPrice) <= Number(variant.price)) {
-          showToast("Le prix promotionnel doit être inférieur au prix original.");
-          return;
-        }
-
-        if (trackInventory && Number(variant.inventory) <= 0) {
-          showToast("Chaque variante doit avoir un stock supérieur à 0.");
-          return;
-        }
-      }
-    }
-
-    // VALIDATE LOTS
-    if (enableLots) {
-      for (const lot of lotRules) {
-
-        if (!lot.quantity ||Number(lot.quantity) <= 0) {
-          showToast("Chaque lot doit avoir une quantité valide.");
-          return;
-        }
-
-        if (!lot.price || Number(lot.price) <= 0) {
-          showToast("Chaque lot doit avoir un prix valide.");
-          return;
-        }
-      }
-    }
-
-    try {
-
-      setLoading(true);
-
-      const uploadedImages = [];
-
-      for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-
-        setCurrentUploadIndex(i + 1);
-
-        const url = await uploadToCloudinary(image.file,(percent) => {
-          const totalProgress =((i + percent / 100) /images.length) * 100;
-          setUploadProgress(Math.round(totalProgress));
+    const removeImage = (index) => {
+        setImages((prev) => {
+            const img = prev[index];
+            if (img?.preview?.startsWith("blob:")) URL.revokeObjectURL(img.preview);
+            return prev.filter((_, i) => i !== index);
         });
+    };
 
-        const webpUrl = url.replace("/upload/","/upload/f_webp,q_auto,w_1200/");
+    const makeThumbnail = (index) => {
+        setImages((prev) => {
+            const copy = [...prev];
+            const [sel] = copy.splice(index, 1);
+            copy.unshift(sel);
+            return copy;
+        });
+    };
 
-        uploadedImages.push(webpUrl);
+    useEffect(() => () => {
+        images.forEach((img) => { if (img.preview?.startsWith("blob:")) URL.revokeObjectURL(img.preview); });
+    }, []); // eslint-disable-line
 
-      }
+    /* ── variant image ── */
 
-      // UPLOAD VARIANT IMAGES
-      const uploadedVariants = await Promise.all(variantRows.map(async (variant) => {
+    const handleVariantImageChange = (variantId, file) => {
+        if (!file?.type.startsWith("image/")) { showToast("Fichier image invalide."); return; }
+        setVariantRows((prev) => prev.map((v) => {
+            if (v.id !== variantId) return v;
+            if (v.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(v.imagePreview);
+            return { ...v, imageFile: file, imagePreview: URL.createObjectURL(file) };
+        }));
+    };
 
-        let uploadedImage = "";
+    /* ── variant field change ── */
 
-        if (variant.imageFile) {
+    const handleVariantChange = (variantId, field, value) => {
+        setVariantRows((prev) => prev.map((r) =>
+            r.id === variantId ? { ...r, [field]: value } : r
+        ));
+    };
 
-          const url = await uploadToCloudinary(variant.imageFile);
+    /* ── variant options ── */
 
-          uploadedImage = url.replace("/upload/","/upload/f_webp,q_auto,w_800/");
+    const addVariantOption = () => {
+        if (variantOptions.length >= MAX_VARIANT_OPTIONS) { showToast("Maximum 2 variantes."); return; }
+        setVariantOptions((prev) => [...prev, { id: crypto.randomUUID(), name: "", values: [] }]);
+    };
 
+    const removeVariantOption = (id) => setVariantOptions((prev) => prev.filter((o) => o.id !== id));
+
+    const updateVariantName = (id, value) => {
+        setVariantOptions((prev) => prev.map((o) => o.id === id ? { ...o, name: value } : o));
+    };
+
+    const addVariantValue = (optionId, value) => {
+        if (!value.trim()) return;
+        setVariantOptions((prev) => prev.map((o) => {
+            if (o.id !== optionId) return o;
+            if (o.values.includes(value.trim())) return o;
+            return { ...o, values: [...o.values, value.trim()] };
+        }));
+    };
+
+    const removeVariantValue = (optionId, index) => {
+        setVariantOptions((prev) => prev.map((o) =>
+            o.id !== optionId ? o : { ...o, values: o.values.filter((_, i) => i !== index) }
+        ));
+    };
+
+    /* ── variant row generation (only on option structure change) ── */
+
+    const optionStructureRef = useRef("");
+
+    useEffect(() => {
+        const validOptions = variantOptions
+            .map((o) => ({ ...o, values: o.values.filter((v) => v.trim()) }))
+            .filter((o) => o.name.trim() && o.values.length > 0);
+
+        const structureKey = JSON.stringify(validOptions.map((o) => ({ name: o.name, values: o.values })));
+        if (structureKey === optionStructureRef.current) return;
+        optionStructureRef.current = structureKey;
+
+        if (!validOptions.length) {
+            setVariantRows((prev) => {
+                prev.forEach((v) => { if (v.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(v.imagePreview); });
+                return [];
+            });
+            return;
         }
 
-        return {
-          ...variant,
-          image: uploadedImage,
-        };
+        setVariantRows((prevRows) => {
+            const combinations = [];
+            const generate = (index, currentOptions) => {
+                if (index === validOptions.length) {
+                    const existing = prevRows.find(
+                        (r) => JSON.stringify(r.options) === JSON.stringify(currentOptions)
+                    );
+                    combinations.push({
+                        id:           existing?.id ?? crypto.randomUUID(),
+                        options:      currentOptions,
+                        inventory:    existing?.inventory ?? "",
+                        price:        existing?.price ?? "",
+                        oldPrice:     existing?.oldPrice ?? "",
+                        hasDiscount:  existing?.hasDiscount ?? false,
+                        image:        existing?.image ?? "",
+                        imageFile:    existing?.imageFile ?? null,
+                        imagePreview: existing?.imagePreview ?? "",
+                    });
+                    return;
+                }
+                const option = validOptions[index];
+                option.values.forEach((value) => {
+                    generate(index + 1, [
+                        ...currentOptions,
+                        { name: option.name, value, position: index },
+                    ]);
+                });
+            };
+            generate(0, []);
 
-      }));
+            const newIds = new Set(combinations.map((c) => c.id));
+            prevRows.forEach((r) => {
+                if (!newIds.has(r.id) && r.imagePreview?.startsWith("blob:")) URL.revokeObjectURL(r.imagePreview);
+            });
 
-      await addDoc(collection(DB, "products"),{
-        storeId: store.id,
-        storeSlug: store.slug,
-        storeName: store.name,
-        storeLogo: store.logo || "",
-        name: name.trim(),
-        category: category.label,
-        category_slug: category.slug,
-        subcategory: subcategory?.label || "",
-        subcategory_slug: subcategory?.slug || "",
-        description: description.trim(),
-        price: hasDiscount ? Number(discountedPrice) : Number(price),
-        hasDiscount,
-        oldPrice: hasDiscount ? Number(price) : null,
-        images: uploadedImages,
-        thumbnail: uploadedImages[0],
-        shipping_fee: Number(store?.shipping_fee || 8),
-        stats: {
-          ordersCount: 0,
-          weeklyOrders: 0,
-          views: 0,
-          favorites: 0,
-        },
-        rating: {
-          average: 0,
-          count: 0,
-          total: 0,
-        },
-        active: true,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        trackInventory,
-        inventory: variantRows.length > 0 ? variantRows.reduce((sum,variant) => sum + Number(variant.inventory || 0), 0) : Number(inventory || 0),
-        hasVariants: variantRows.length > 0,
-        options: variantRows.length > 0 ? variantOptions
-          .filter((option) => option.name.trim())
-          .map((option) => ({
-            name: option.name.trim(),
-            values: option.values.filter((value) => value.trim()),
-          })) : [],
+            return combinations;
+        });
+    }, [variantOptions]);
 
-        variants: variantRows.length > 0 ? uploadedVariants.map((variant) => ({
-          id: variant.id,
+    /* ── lots ── */
 
-          variantKey: variant.options
-            .map((o) => o.value)
-            .join("-")
-            .toLowerCase(),
+    const addLotRule = () => setLotRules((prev) => [...prev, { id: crypto.randomUUID(), quantity: "", price: "" }]);
+    const removeLotRule = (id) => setLotRules((prev) => prev.filter((l) => l.id !== id));
+    const updateLotRule = (id, field, value) => {
+        setLotRules((prev) => prev.map((l) => l.id === id ? { ...l, [field]: value } : l));
+    };
 
-          options: variant.options,
+    /* ── toggle open state ── */
 
-          inventory: Number(variant.inventory || 0),
+    const toggleGroup = (key) => setOpenedGroups((p) => ({ ...p, [key]: !p[key] }));
 
-          price: Number(variant.price || 0),
+    /* ── grouped variants for 2-level display ── */
 
-          hasDiscount: variant.hasDiscount,
-
-          oldPrice: variant.hasDiscount ? Number(variant.oldPrice || 0) : null,
-
-          image: variant.image || "",
-
-          active: true,
-        })) : [],
-
-        lotRules: enableLots ? {
-          enabled: true,
-          lots: lotRules.map((lot) => ({
-            quantity: Number(lot.quantity || 0),
-            price: Number(lot.price || 0),
-          })),
-        } : {
-          enabled: false,
-          lots: [],
-        },
-      });
-
-      router.push("/dashboard/products");
-
-    } catch (error) {
-      console.log("UPLOAD ERROR:",error);
-      showToast("Une erreur est survenue.");
-    } finally {
-      setLoading(false);
-      setUploadProgress(0);
-      setCurrentUploadIndex(0);
-    }
-  };
-
-  //Grouped Variants
-  const groupedVariants = Object.values(variantRows.reduce((acc, variant) => {
-
-    const firstOption = variant.options[0];
-
-    const parentKey = firstOption?.value || "Default";
-
-    if (!acc[parentKey]) {
-
-      acc[parentKey] = {
-        parentLabel: `${firstOption?.name}: ${firstOption?.value}`,
-        variants: [],
-      };
-
-    }
-
-    acc[parentKey].variants.push(
-      variant
+    const groupedVariants = Object.values(
+        variantRows.reduce((acc, variant) => {
+            const first = variant.options[0];
+            const key   = first?.value || "Default";
+            if (!acc[key]) acc[key] = { parentLabel: `${first?.name}: ${first?.value}`, variants: [] };
+            acc[key].variants.push(variant);
+            return acc;
+        }, {})
     );
 
-    return acc;
+    //validation
+    const validate = () => {
+        if (!name.trim())        { showToast("Veuillez saisir le nom du produit.");    return false; }
+        if (!description.trim()) { showToast("Veuillez saisir une description.");      return false; }
+        if (images.length === 0) { showToast("Veuillez ajouter au moins une image."); return false; }
+        if (!category)           { showToast("Veuillez choisir une catégorie.");       return false; }
+        if (!subcategory)        { showToast("Veuillez choisir une sous-catégorie.");  return false; }
+        if (!price || Number(price) <= 0) { showToast("Le prix doit être supérieur à 0."); return false; }
 
-  }, {}));
+        if (hasDiscount) {
+            if (!discountedPrice || Number(discountedPrice) <= 0) {
+                showToast("Le prix promotionnel doit être supérieur à 0."); return false;
+            }
+            if (Number(discountedPrice) >= Number(price)) {
+                showToast("Le prix promotionnel doit être inférieur au prix original."); return false;
+            }
+        }
 
-  const hasNestedVariants = variantOptions.length > 1;
+        if (variantRows.length === 0) {
+            if (!inventory || Number(inventory) <= 0) {
+                showToast("Le stock doit être supérieur à 0."); 
+                return false;
+            }
+        }
 
-  return (
-    <div className="new-product-page">
+        if (variantOptions.length > 0) {
+            const invalid = variantOptions.find(
+                (o) => !o.name.trim() || o.values.filter((v) => v.trim()).length === 0
+            );
+            if (invalid) { showToast("Chaque variante doit avoir un nom et au moins une valeur."); return false; }
+            if (variantRows.length === 0) { showToast("Ajoutez au moins une combinaison de variantes."); return false; }
+        }
 
-      <Link
-        href="/dashboard/products"
-        className="back-products"
-      >
-        <FiArrowLeft />
-        Retour aux produits
-      </Link>
+        for (const variant of variantRows) {
+            if (!variant.imageFile && !variant.image) {
+                showToast("Chaque variante doit avoir une image."); return false;
+            }
+            if (!variant.price || Number(variant.price) <= 0) {
+                showToast("Chaque variante doit avoir un prix valide."); return false;
+            }
+            if (variant.hasDiscount) {
+                if (!variant.oldPrice || Number(variant.oldPrice) <= 0) {
+                    showToast("Veuillez saisir le prix original de chaque variante."); return false;
+                }
+                if (Number(variant.price) >= Number(variant.oldPrice)) {
+                    showToast("Le prix promo doit être inférieur au prix original (variante)."); return false;
+                }
+            }
+            if (variant.inventory === "" || Number(variant.inventory) <= 0) {
+                showToast("Le stock de chaque variante doit être supérieur à 0."); return false;
+            }
+        }
 
-      <div className="new-product-header">
+        if (enableLots) {
+            for (const lot of lotRules) {
+                if (!lot.quantity || Number(lot.quantity) <= 0) {
+                    showToast("La quantité de chaque lot doit être supérieure à 0.");
+                    return false;
+                }
+                if (!lot.price || Number(lot.price) <= 0) {
+                    showToast("Le prix de chaque lot doit être supérieur à 0.");
+                    return false;
+                }
+            }
+        }
 
-        <h1>Ajouter un produit</h1>
+        return true;
+    };
 
-        <p>Ajoutez un nouvel article à votre boutique</p>
+    /* ── submit ── */
 
-      </div>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (loading || !validate()) return;
 
-      <form
-        onSubmit={handleSubmit}
-        className="product-layout"
-      >
+        try {
+            setLoading(true);
 
-        {/* LEFT CONTENT */}
-        <div className="product-main-column">
+            const uploadedImages = [];
+            for (let i = 0; i < images.length; i++) {
+                setCurrentUploadIndex(i + 1);
+                const url = await uploadToCloudinary(images[i].file, (pct) => {
+                    setUploadProgress(Math.round(((i + pct / 100) / images.length) * 100));
+                });
+                uploadedImages.push(url.replace("/upload/", "/upload/f_webp,q_auto,w_1200/"));
+            }
 
-          {/* NAME + DESCRIPTION Section */}
-          <div className="product-card">
-            <div className="product-card-header">
+            const uploadedVariants = await Promise.all(
+                variantRows.map(async (variant) => {
+                    let uploadedImage = variant.image || "";
+                    if (variant.imageFile) {
+                        const url = await uploadToCloudinary(variant.imageFile);
+                        uploadedImage = url.replace("/upload/", "/upload/f_webp,q_auto,w_800/");
+                    }
+                    return { ...variant, image: uploadedImage };
+                })
+            );
 
-              <div className="product-card-title-wrap">
-                <div className="product-card-icon">
-                  <FiPackage />
-                </div>
+            const priceData      = buildPriceData({ hasDiscount, price, discountedPrice });
+            const totalInventory = uploadedVariants.length > 0
+                ? uploadedVariants.reduce((sum, v) => sum + Number(v.inventory || 0), 0)
+                : Number(inventory || 0);
 
-                <div>
-                  <h3>Détails du produit</h3>
-                  <p>Informations principales visibles par les clients.</p>
-                </div>
-              </div>
+            await addDoc(collection(DB, "products"), {
+                storeId:          store.id,
+                storeSlug:        store.slug,
+                storeName:        store.name,
+                storeLogo:        store.logo || "",
+                name:             name.trim(),
+                category:         category.label,
+                category_slug:    category.slug,
+                subcategory:      subcategory?.label || "",
+                subcategory_slug: subcategory?.slug  || "",
+                description:      description.trim(),
+                price:            priceData.price,
+                hasDiscount:      priceData.hasDiscount,
+                oldPrice:         priceData.oldPrice,
+                images:           uploadedImages,
+                thumbnail:        uploadedImages[0],
+                shipping_fee:     Number(store?.shipping_fee || 8),
+                stats:            { ordersCount: 0, weeklyOrders: 0, views: 0, favorites: 0 },
+                rating:           { average: 0, count: 0, total: 0 },
+                active:           true,
+                createdAt:        serverTimestamp(),
+                updatedAt:        serverTimestamp(),
+                inventory:        totalInventory,
+                hasVariants:      uploadedVariants.length > 0,
+                options:          uploadedVariants.length > 0
+                    ? variantOptions.filter((o) => o.name.trim()).map((o) => ({
+                        name: o.name.trim(), values: o.values.filter((v) => v.trim()),
+                    }))
+                    : [],
+                variants: uploadedVariants.length > 0
+                    ? uploadedVariants.map((v) => ({
+                        id:          v.id,
+                        variantKey:  v.options.map((o) => o.value).join("-").toLowerCase(),
+                        options:     v.options,
+                        inventory:   Number(v.inventory || 0),
+                        price:       Number(v.price || 0),
+                        hasDiscount: v.hasDiscount,
+                        oldPrice:    v.hasDiscount ? Number(v.oldPrice || 0) : null,
+                        image:       v.image || "",
+                        active:      true,
+                    }))
+                    : [],
+                lotRules: enableLots
+                    ? { enabled: true, lots: lotRules.map((l) => ({ quantity: Number(l.quantity || 0), price: Number(l.price || 0) })) }
+                    : { enabled: false, lots: [] },
+            });
 
+            router.push("/dashboard/products");
+
+        } catch (err) {
+            console.error("Submit error:", err);
+            showToast("Une erreur est survenue. Veuillez réessayer.");
+        } finally {
+            setLoading(false);
+            setUploadProgress(0);
+            setCurrentUploadIndex(0);
+        }
+    };
+
+    const progressLabel = loading
+        ? currentUploadIndex > 0 ? `Image ${currentUploadIndex}/${images.length} — ${uploadProgress}%` : "Enregistrement..."
+        : null;
+
+    /* ── render ── */
+
+    return (
+        <div className="np-page">
+
+            <Link href="/dashboard/products" className="np-back">
+                <FiArrowLeft size={14} /> Retour aux produits
+            </Link>
+
+            <div className="np-header">
+                <h1>Ajouter un produit</h1>
+                <p>Ajoutez un nouvel article à votre boutique</p>
             </div>
 
-            <div className="product-card-content">
+            <form onSubmit={handleSubmit} className="np-form">
 
-              <div className="form-group">
-                <label>Nom du produit</label>
-
-                <input
-                  type="text"
-                  placeholder="Ex : T-shirt en coton"
-                  value={name}
-                  maxLength={120}
-                  onChange={(e) => setName(e.target.value.trimStart())}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Description</label>
-
-                <textarea
-                  rows={6}
-                  maxLength={3000}
-                  placeholder="Décrivez votre produit..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value.trimStart())}
-                />
-
-                <small>
-                  Ajoutez les détails importants concernant votre produit.
-                </small>
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* IMAGES */}
-          <div className="product-card">
-
-            <div className="product-card-header">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <FiImage />
-                </div>
-
-                <div>
-                  <h3>Images</h3>
-                  <p>La première image sera utilisée comme miniature.</p>
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content">
-
-              <div className="images-grid modern-images-grid">
-
-                {images.map((image, index) => (
-                  <div
-                    key={image.id}
-                    className="image-preview"
-                  >
-
-                    <img
-                      src={image.preview}
-                      alt="Preview"
-                      loading="lazy"
-                      className="preview-image"
-                    />
-
-                    {index === 0 && (
-                      <span className="thumbnail-badge">
-                        Miniature
-                      </span>
-                    )}
-
-                    <div className="image-overlay">
-
-                      {index !== 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => makeThumbnail(index)}
-                        >
-                          <FiStar />
-                        </button>
-                      ) : (
-                        <span></span>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="remove-btn"
-                      >
-                        <FiX />
-                      </button>
+                {/* 1 — DETAILS */}
+                <SectionCard icon={FiPackage} title="Détails du produit" subtitle="Informations principales visibles par les clients.">
+                    <div className="np-field">
+                        <label>Nom du produit</label>
+                        <input type="text" placeholder="Ex : T-shirt en coton" value={name} maxLength={120} onChange={(e) => setName(e.target.value.trimStart())} />
                     </div>
-                  </div>
-                ))}
+                    <div className="np-field">
+                        <label>Description</label>
+                        <textarea rows={5} maxLength={3000} placeholder="Décrivez votre produit..." value={description} onChange={(e) => setDescription(e.target.value.trimStart())} />
+                        <small>Ajoutez les détails importants (matière, dimensions, utilisation…).</small>
+                    </div>
+                </SectionCard>
 
-                {images.length < 5 && (
-                  <label className="upload-box">
-                    <FiUpload />
+                {/* 2 — IMAGES */}
+                <SectionCard icon={FiImage} title="Images" subtitle="La première image sera utilisée comme miniature principale.">
+                    <div className="np-images-grid">
+                        {images.map((img, i) => (
+                            <div key={img.id} className="np-img-item">
+                                <img src={img.preview} alt="" />
+                                {i === 0 && <span className="np-thumb-badge">Miniature</span>}
+                                <div className="np-img-overlay">
+                                    {i !== 0 && (
+                                        <button type="button" onClick={() => makeThumbnail(i)} title="Définir comme miniature">
+                                            <FiStar size={14} />
+                                        </button>
+                                    )}
+                                    <button type="button" className="np-img-remove" onClick={() => removeImage(i)} title="Supprimer">
+                                        <FiX size={14} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        {images.length < 5 && (
+                            <label className="np-img-add">
+                                <FiUpload size={18} />
+                                <span>Ajouter</span>
+                                <small>Max 5</small>
+                                <input 
+                                    ref={imageInputRef}
+                                    type="file" 
+                                    accept="image/*" 
+                                    multiple 
+                                    hidden 
+                                    onChange={(e) => handleFiles(e.target.files, imageInputRef)}
+                                    //onChange={(e) => { handleFiles(e.target.files); e.target.value = ""}} 
+                                />
+                            </label>
+                        )}
+                    </div>
+                </SectionCard>
 
-                    <span>Ajouter</span>
+                {/* 3 — CATEGORY */}
+                <SectionCard icon={FiFileText} title="Catégorie" subtitle="Choisissez la catégorie principale du produit.">
+                    <div className="np-categories-grid">
+                        {categories.map((cat) => (
+                            <button key={cat.slug} type="button" className={`np-cat-card ${category?.slug === cat.slug ? "np-cat-active" : ""}`}
+                                onClick={() => { setCategory(cat); setSubcategory(null); }}>
+                                <img src={cat.image} alt={cat.label} />
+                                <span>{cat.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </SectionCard>
 
-                    <small>Max 5 images</small>
-
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      hidden
-                      onChange={(e) => {
-                        handleFiles(e.target.files); 
-                        e.target.value = ""
-                      }}
-                    />
-                  </label>
+                {/* 4 — SUBCATEGORY */}
+                {category && (
+                    <SectionCard icon={FiLayers} title="Sous-catégorie" subtitle="Précisez le type du produit.">
+                        <div className="np-subcats">
+                            {category.subcategories.map((sub) => (
+                                <button key={sub.slug} type="button"
+                                    className={`np-subcat-pill ${subcategory?.slug === sub.slug ? "np-subcat-active" : ""}`}
+                                    onClick={() => setSubcategory(sub)}>
+                                    {sub.label}
+                                </button>
+                            ))}
+                        </div>
+                    </SectionCard>
                 )}
 
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* CATEGORY */}
-          <div className="product-card">
-
-            <div className="product-card-header">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <FiFileText />
-                </div>
-
-                <div>
-
-                  <h3>Catégorie</h3>
-
-                  <p>
-                    Choisissez la catégorie principale du produit.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content">
-
-              <div className="categories-grid">
-
-                {categories.map((cat) => (
-
-                  <button
-                    key={cat.slug}
-                    type="button"
-                    className={`category-card ${category?.slug === cat.slug ? "active" : ""}`}
-                    onClick={() =>
-                      handleCategorySelect(cat)
-                    }
-                  >
-
-                    <img
-                      src={cat.image}
-                      alt={cat.label}
-                    />
-
-                    <span>
-                      {cat.label}
-                    </span>
-
-                  </button>
-
-                ))}
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* SUB-CATEGORY */}
-          {category && (
-
-            <div className="product-card">
-
-              <div className="product-card-header">
-
-                <div className="product-card-title-wrap">
-
-                  <div className="product-card-icon">
-                    <FiLayers />
-                  </div>
-
-                  <div>
-
-                    <h3>Sous-catégorie</h3>
-
-                    <p>
-                      Choisissez le type précis du produit.
-                    </p>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-              <div className="product-card-content">
-
-                <div className="subcategories-grid">
-
-                  {category.subcategories.map((sub) => (
-
-                    <button
-                      key={sub.slug}
-                      type="button"
-                      className={`subcategory-card ${subcategory?.slug === sub.slug ? "active" : ""}`}
-                      onClick={() =>
-                        setSubcategory(sub)
-                      }
-                    >
-
-                      {sub.label}
-
-                    </button>
-
-                  ))}
-
-                </div>
-
-              </div>
-
-            </div>
-
-          )}
-
-          {/* PRIX */}
-          <div className="product-card">
-            <div className="product-card-header">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <FiTag />
-                </div>
-
-                <div>
-                  <h3>Prix</h3>
-                  <p>Définissez le prix principal du produit.</p>
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content">
-                <div className="double-grid">
-
-                  <div className="form-group">
-
-                    <label>Prix (DT)</label>
-
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0.000"
-                      value={price}
-                      onChange={(e) => setPrice(e.target.value)}
-                    />
-
-                  </div>
-
-                 
-
-                </div>
-
-                {/* PROMOTION */}
-                <div className="premium-box">
-
-                  <div className="premium-box-top">
-
-                    <div className="premium-box-left">
-
-                      <div className="premium-mini-icon">
-                        <FiPercent />
-                      </div>
-
-                      <div>
-                        <h4>Promotion</h4>
-                        <p>Afficher un prix barré avec un prix réduit.</p>
-                      </div>
-
-                    </div>
-
-                    <label className="switch">
-
-                      <input
-                        type="checkbox"
-                        checked={hasDiscount}
-                        onChange={() => setHasDiscount(!hasDiscount)}
-                      />
-
-                      <span className="slider"></span>
-
-                    </label>
-
-                  </div>
-
-                  {hasDiscount && (
-                    <div className="discount-grid">
-
-                      <div className="form-group">
-
-                        <label>Prix original</label>
-
-                        <input
-                          type="number"
-                          min="0"
-                          value={price}
-                          onChange={(e) => setPrice(e.target.value)}
-                        />
-
-                      </div>
-
-                      <div className="form-group" style={{marginTop:'10px'}}>
-
-                        <label>Prix promotionnel</label>
-
-                        <input
-                          type="number"
-                          min="0"
-                          value={discountedPrice}
-                          onChange={(e) => setDiscountedPrice(e.target.value)}
-                        />
-
-                      </div>
-
-                    </div>
-                  )}
-
-                </div>
-
-            </div>
-
-          </div>
-          
-          {/* INVENTAIRE */}
-          <div className="product-card">
-
-            <div className="product-card-header product-card-header-column-mobile">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <LuBoxes />
-                </div>
-
-                <div>
-                  <h3>Inventaire</h3>
-                  <p>Suivez le stock disponible pour éviter les ruptures.</p>
-                </div>
-
-              </div>
-
-              <div className="inventory-switch-wrap">
-
-                <span>Suivi du stock</span>
-
-                <label className="switch">
-
-                  <input
-                    type="checkbox"
-                    checked={trackInventory}
-                    onChange={() => setTrackInventory(!trackInventory)}
-                  />
-
-                  <span className="slider"></span>
-
-                </label>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content">
-
-              <div className="inventory-grid">
-
-                <div className="form-group">
-
-                  <label>Quantité disponible</label>
-
-                  <input
-                    type="number"
-                    min="0"
-                    disabled={!trackInventory}
-                    placeholder="Ex : 120"
-                    value={inventory}
-                    onChange={(e) => setInventory(e.target.value)}
-                  />
-
-                  <small>
-
-                    {variantRows.length > 0
-                      ? "Chaque variante possède son propre stock ci-dessous."
-                      : "Nombre total de pièces disponibles à la vente."}
-
-                  </small>
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* VARIANTS */}
-          <div className="product-card">
-
-            <div className="product-card-header product-card-header-column-mobile" >
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <FiLayers />
-                </div>
-
-                <div>
-                  <h3>Variantes</h3>
-                  <p>
-                    Ajoutez des tailles, couleurs ou autres options.
-                  </p>
-                </div>
-
-              </div>
-              
-              {variantOptions.length < MAX_VARIANT_OPTIONS && (
-
-             
-              <button
-                type="button"
-                className="modern-add-btn"
-                onClick={addVariantOption}
-                disabled={variantOptions.length >= MAX_VARIANT_OPTIONS}
-              >
-
-                <FiPlus />
-
-                Ajouter
-
-              </button>
-               )}
-              
-
-            </div>
-
-            <div className="product-card-content">
-
-              {variantOptions.length === 0 ? (
-
-                <div className="empty-variants-box">
-
-                  <FiLayers />
-
-                  <h4>Aucune variante</h4>
-
-                  <p>
-                    Ajoutez des options comme taille ou couleur
-                    pour gérer les prix, images et stocks.
-                  </p>
-
-                  <button
-                    type="button"
-                    className="modern-outline-btn"
-                    onClick={addVariantOption}
-                  >
-
-                    <FiPlus />
-
-                    Ajouter une variante
-
-                  </button>
-
-                </div>
-
-              ) : (
-
-                <div className="variants-list">
-
-                  {variantOptions.map((option) => (
-
-                    <div key={option.id} className="modern-variant-card">
-
-                      {/* HEADER */}
-                      <div className="modern-variant-header">
-
-                        <div className="form-group modern-variant-name">
-
-                          <label>Nom de la variante</label>
-
-                          <input
-                            style={{backgroundColor:'#fff'}}
-                            type="text"
-                            placeholder="Ex : Taille, Couleur..."
-                            value={option.name}
-                            onChange={(e) =>
-                              updateVariantName(
-                                option.id,
-                                e.target.value
-                              )
-                            }
-                          />
-
+                {/* 5 — PRICE */}
+                <SectionCard icon={FiTag} title="Prix" subtitle="Définissez le prix de vente du produit.">
+                    {!hasDiscount ? (
+                        <div className="np-field np-field-sm">
+                            <label>Prix (TND)</label>
+                            <input type="number" min="0" placeholder="0.000" value={price} onChange={(e) => setPrice(e.target.value)} />
                         </div>
-
-                        <button
-                          type="button"
-                          className="modern-remove-btn"
-                          onClick={() =>
-                            removeVariantOption(option.id)
-                          }
-                        >
-
-                          <FiTrash2 />
-
-                        </button>
-
-                      </div>
-
-                      {/* VALUES */}
-                      <div className="modern-variant-values">
-
-                        <label>Options</label>
-
-                      </div>
-
-                      {/* INPUT OPTIONS */}
-                      <div className="modern-option-input-wrap">
-
-                        <input
-                          type="text"
-                          placeholder="Ajouter une option + Entrée"
-                          value={variantDrafts[option.id] || ""}
-                          onChange={(e) =>
-                            setVariantDrafts((prev) => ({
-                              ...prev,
-                              [option.id]: e.target.value,
-                            }))
-                          }
-
-                          onKeyDown={(e) => {
-
-                            if (e.key === "Enter" || e.key === ",") {
-
-                              e.preventDefault();
-
-                              const value = (variantDrafts[option.id] || "").trim();
-
-                              if (!value) return;
-
-                              addVariantValue(option.id,value);
-
-                              setVariantDrafts((prev) => ({
-                                ...prev,
-                                [option.id]: "",
-                              }));
-
-                            }
-
-                          }}
-                        />
-
-                        <button
-                          type="button"
-                          className="modern-option-add-btn"
-                          onClick={() => {
-
-                            const value = (variantDrafts[option.id] || "").trim();
-
-                            if (!value) return;
-
-                            addVariantValue(option.id,value);
-
-                            setVariantDrafts((prev) => ({
-                              ...prev,
-                              [option.id]: "",
-                            }));
-
-                          }}
-                        >
-
-                          <FiPlus />
-                          Ajouter
-
-                        </button>
-
-                      </div>
-
-                      <div className="modern-tags-wrap">
-
-                        {option.values.map((value, index) => (
-
-                          <div
-                            key={index}
-                            className="modern-tag"
-                          >
-
-                            <span>{value}</span>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeVariantValue(
-                                  option.id,
-                                  index
-                                )
-                              }
-                            >
-
-                              <FiX />
-
-                            </button>
-
-                          </div>
-
-                        ))}
-
-                      </div>
-
-                    </div>
-
-                  ))}
-
-                </div>
-
-              )}
-
-
-              {/* COMBINAISONS */}
-              {variantRows.length > 0 && (
-
-                <>
-
-                  <div className="variants-divider"></div>
-
-                  <div className="modern-combinations-top">
-
-                    <div>
-
-                      <h3>Combinaisons</h3>
-
-                      <p>Gérez les prix, promotions et stocks de chaque variante.</p>
-
-                    </div>
-
-                    <div className="modern-combinations-count">
-
-                      {variantRows.length}
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="modern-combinations-box">
-
-                    {hasNestedVariants ? (
-
-                      groupedVariants.map((group, index) => {
-
-                        const isOpen = openedGroups[getGroupKey(index)] || false;
-
-                        return (
-
-                          <div
-                            key={index}
-                            className="modern-group"
-                          >
-
-                            {/* PARENT */}
-                            <button
-                              type="button"
-                              className="modern-group-parent"
-                              onClick={() =>
-                                setOpenedGroups((prev) => ({
-                                  ...prev,
-                                  [getGroupKey(index)]: !prev[getGroupKey(index)]
-                                }))
-                              }
-                            >
-
-                              <div className="modern-group-left">
-
-                                <div className="modern-group-badge">
-
-                                  {group.parentLabel}
-
-                                </div>
-
-                                <span>{group.variants.length} variantes</span>
-
-                              </div>
-
-                              <FiChevronDown className={ isOpen ? "rotate" : "" }/>
-
-                            </button>
-
-                            {/* CHILDREN */}
-                            {isOpen && (
-
-                              <div className="modern-group-content">
-
-                                {group.variants.map((variant) => {
-
-                                  const values = variant.options.map((o) => o.value);
-
-                                  return (
-
-                                    <div key={variant.id} className="modern-combo-item">
-
-                                      {/* COLLAPSIBLE HEADER */}
-                                      <button
-                                        type="button"
-                                        className="modern-combo-trigger"
-                                        onClick={() =>
-                                          setOpenedGroups((prev) => ({
-                                            ...prev,
-                                            [getVariantKey(variant.id)]: !prev[getVariantKey(variant.id)]
-                                          }))
-                                        }
-                                      >
-
-                                        <div className="modern-combo-trigger-left">
-
-                                          <div className="modern-combo-avatar">
-
-                                            {variant.imagePreview ? (
-
-                                              <img
-                                                src={variant.imagePreview}
-                                                alt="variant image"
-                                              />
-
-                                            ) : (
-
-                                              <FiPackage />
-
-                                            )}
-
-                                          </div>
-
-                                          <div>
-
-                                            <h4>{hasNestedVariants ? values[1] : values[0]}</h4>
-
-                                            <p>
-
-                                              {formatPrice(
-                                                variant.price
-                                              )} DT
-
-                                              {" "}·{" "}
-
-                                              {variant.inventory || 0} {" "} en stock
-
-                                            </p>
-
-                                          </div>
-
-                                        </div>
-
-                                        <FiChevronDown className={openedGroups[getVariantKey(variant.id)] ? "rotate" : ""}/>
-
-                                      </button>
-
-
-                                      {/* CONTENT */}
-                                      {openedGroups[getVariantKey(variant.id)] && (
-
-                                        <div className="modern-combo-content">
-
-                                          {/* IMAGE */}
-                                          <div className="modern-combo-image-section">
-
-                                            <label className="modern-combo-upload">
-
-                                              {variant.imagePreview ? (
-
-                                                <img
-                                                  src={variant.imagePreview}
-                                                  alt="variant image"
-                                                />
-
-                                              ) : (
-
-                                                <FiUpload />
-
-                                              )}
-
-                                              <input
-                                                type="file"
-                                                accept="image/*"
-                                                hidden
-                                                onChange={(e) => {
-
-                                                  const file =e.target.files?.[0];
-
-                                                  handleVariantImage(variant.id,file);
-
-                                                  e.target.value = "";
-
-                                                }}
-                                              />
-
-                                            </label>
-
-                                          </div>
-
-
-                                          {/* FIELDS */}
-                                          <div className="modern-combo-fields">
-
-                                            {/* PRICE */}
-                                            <div className="modern-combo-field">
-
-                                              <label>
-                                                Prix
-                                              </label>
-
-                                              <input
-                                                type="number"
-                                                min="0"
-                                                placeholder="0.000"
-                                                value={variant.price ?? ""}
-                                                onChange={(e) => {
-                                                  const value = e.target.value;
-
-                                                  setVariantRows((prev) =>
-                                                    prev.map((row) =>
-                                                      row.id === variant.id
-                                                        ? {
-                                                            ...row,
-                                                            price: value,
-                                                          }
-                                                        : row
-                                                    )
-                                                  );
-
-                                                }}
-                                              />
-
-                                            </div>
-
-
-                                            {/* STOCK */}
-                                            <div className="modern-combo-field">
-
-                                              <label>
-                                                Stock
-                                              </label>
-
-                                              <input
-                                                type="number"
-                                                min="0"
-                                                placeholder="0"
-                                                value={variant.inventory ?? ""}
-                                                onChange={(e) => {
-
-                                                  const value = e.target.value;
-
-                                                  setVariantRows((prev) =>
-                                                    prev.map((row) =>
-                                                      row.id === variant.id
-                                                        ? {
-                                                            ...row,
-                                                            inventory: Number(value)
-                                                          }
-                                                        : row
-                                                    )
-                                                  );
-
-                                                }}
-                                              />
-
-                                            </div>
-
-
-                                            {/* DISCOUNT */}
-                                            <div className="modern-combo-discount">
-
-                                              <div className="modern-combo-discount-left">
-
-                                                <div className="premium-mini-icon">
-                                                  <FiPercent />
-                                                </div>
-
-                                                <div>
-
-                                                  <h5>
-                                                    Promotion
-                                                  </h5>
-
-                                                  <p>
-                                                    Activer un prix promo
-                                                  </p>
-
-                                                </div>
-
-                                              </div>
-
-                                              <label className="switch">
-
-                                                <input
-                                                  type="checkbox"
-                                                  checked={variant.hasDiscount}
-                                                  onChange={(e) => {
-
-                                                    const checked = e.target.checked;
-
-                                                    setVariantRows((prev) =>
-                                                      prev.map((row) =>
-                                                        row.id === variant.id
-                                                          ? {
-                                                              ...row,
-                                                              hasDiscount:
-                                                                checked,
-                                                            }
-                                                          : row
-                                                      )
-                                                    );
-
-                                                  }}
-                                                />
-
-                                                <span className="slider"></span>
-
-                                              </label>
-
-                                            </div>
-
-
-                                            {/* DISCOUNT FIELDS */}
-                                            {variant.hasDiscount && (
-
-                                              <div className="modern-combo-discount-grid">
-
-                                                {/* ORIGINAL */}
-                                                <div className="modern-combo-field">
-
-                                                  <label>
-                                                    Prix original
-                                                  </label>
-
-                                                  <input
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="0.000"
-                                                    value={variant.oldPrice ?? ""}
-                                                    onChange={(e) => {
-                                                      const value = e.target.value;
-
-                                                      setVariantRows((prev) =>
-                                                        prev.map((row) =>
-                                                          row.id === variant.id
-                                                            ? {
-                                                                ...row,
-                                                                oldPrice: value,
-                                                              }
-                                                            : row
-                                                        )
-                                                      );
-
-                                                    }}
-                                                  />
-
-                                                </div>
-
-
-                                                {/* DISCOUNTED */}
-                                                <div className="modern-combo-field">
-
-                                                  <label>
-                                                    Prix promotionnel
-                                                  </label>
-
-                                                  <input
-                                                    type="number"
-                                                    min="0"
-                                                    placeholder="0.000"
-                                                    value={variant.price ?? ""}
-                                                    onChange={(e) => {
-                                                      const value = e.target.value;
-
-                                                      setVariantRows((prev) =>
-                                                        prev.map((row) =>
-                                                          row.id === variant.id
-                                                            ? {
-                                                                ...row,
-                                                                price: value,
-                                                              }
-                                                            : row
-                                                        )
-                                                      );
-
-                                                    }}
-                                                  />
-
-                                                </div>
-
-                                              </div>
-
-                                            )}
-
-                                          </div>
-
-                                        </div>
-
-                                      )}
-
-                                    </div>
-
-                                  );
-
-                                }
-                                )}
-
-                              </div>
-
-                            )}
-
-                          </div>
-
-                        );
-
-                      })
-
                     ) : (
+                        <div className="np-two-col">
+                            <div className="np-field">
+                                <label>Prix original (barré)</label>
+                                <input type="number" min="0" placeholder="0.000" value={price} onChange={(e) => setPrice(e.target.value)} />
+                            </div>
+                            <div className="np-field">
+                                <label>Prix promotionnel</label>
+                                <input type="number" min="0" placeholder="0.000" value={discountedPrice} onChange={(e) => setDiscountedPrice(e.target.value)} />
+                            </div>
+                        </div>
+                    )}
+                    <div className="np-toggle-row">
+                        <div className="np-toggle-info">
+                            <div className="np-mini-icon"><FiPercent size={13} /></div>
+                            <div>
+                                <p className="np-toggle-title">Promotion</p>
+                                <p className="np-toggle-sub">Afficher un prix barré avec un prix réduit</p>
+                            </div>
+                        </div>
+                        <Toggle checked={hasDiscount} onChange={() => { setHasDiscount((v) => !v); setDiscountedPrice(""); }} />
+                    </div>
+                </SectionCard>
 
-                      variantRows.map((variant) => {
+                {/* 6 — INVENTORY */}
+                <SectionCard icon={LuBoxes} title="Inventaire" subtitle="Nombre de pièces disponibles à la vente.">
+                    <div className="np-field np-field-sm">
+                        <label>Quantité disponible</label>
+                        <input
+                            type="number"
+                            min="1"
+                            placeholder="Ex : 50"
+                            value={inventory}
+                            disabled={variantRows.length > 0}
+                            onChange={(e) => setInventory(e.target.value)}
+                        />
+                        <small>
+                            {variantRows.length > 0
+                                ? "Le stock total est calculé automatiquement depuis chaque variante."
+                                : "Nombre de pièces disponibles à la vente."}
+                        </small>
+                    </div>
+                </SectionCard>
 
-                        const values = variant.options?.map((option) => option.value) || [];
-
-                        return (
-
-                          <div
-                            key={variant.id}
-                            className="modern-combo-item"
-                          >
-
-                            {/* COLLAPSIBLE HEADER */}
-                            <button
-                              type="button"
-                              className="modern-combo-trigger"
-                              onClick={() =>
-                                setOpenedGroups((prev) => ({
-                                  ...prev,
-                                  [getVariantKey(variant.id)]: !prev[getVariantKey(variant.id)]
-                                }))
-                              }
-                            >
-
-                              <div className="modern-combo-trigger-left">
-
-                                <div className="modern-combo-avatar">
-
-                                  {variant.imagePreview ? (
-
-                                    <img
-                                      src={variant.imagePreview}
-                                      alt=""
-                                    />
-
-                                  ) : (
-
-                                    <FiPackage />
-
-                                  )}
-
-                                </div>
-
-                                <div>
-
-                                  <h4>{hasNestedVariants? values[1]: values[0]}</h4>
-
-                                  <p>
-                                    {formatPrice(
-                                      variant.price
-                                    )} DT
-
-                                    {" "}·{" "}
-
-                                    {variant.inventory || 0}
-                                    {" "}en stock
-
-                                  </p>
-
-                                </div>
-
-                              </div>
-
-                              <FiChevronDown
-                                className={
-                                  openedGroups[
-                                    getVariantKey(variant.id)
-                                  ]
-                                    ? "rotate"
-                                    : ""
-                                }
-                              />
-
+                {/* 7 — VARIANTS */}
+                <SectionCard icon={FiLayers} title="Variantes" subtitle="Tailles, couleurs ou toute autre option."
+                    rightSlot={
+                        variantOptions.length < MAX_VARIANT_OPTIONS && (
+                            <button type="button" className="np-outline-btn" onClick={addVariantOption}>
+                                <FiPlus size={13} /> Ajouter
                             </button>
-
-
-                            {/* CONTENT */}
-                            {openedGroups[getVariantKey(variant.id)] !== false && (
-
-                              <div className="modern-combo-content">
-
-                                {/* IMAGE */}
-                                <div className="modern-combo-image-section">
-
-                                  <label className="modern-combo-upload">
-
-                                    {variant.imagePreview ? (
-
-                                      <img
-                                        src={variant.imagePreview}
-                                        alt="image preview"
-                                      />
-
-                                    ) : (
-
-                                      <FiUpload />
-
-                                    )}
-
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      hidden
-                                      onChange={(e) => {
-
-                                        const file = e.target.files?.[0];
-
-                                        handleVariantImage(variant.id,file);
-
-                                        e.target.value = "";
-
-                                      }}
-                                    />
-
-                                  </label>
-
-                                </div>
-
-
-                                {/* FIELDS */}
-                                <div className="modern-combo-fields">
-
-                                  {/* PRICE */}
-                                  <div className="modern-combo-field">
-
-                                    <label>Prix</label>
-
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      placeholder="0.000"
-                                      value={variant.price ?? ""}
-                                      onChange={(e) => {
-
-                                        const value = e.target.value;
-
-                                        setVariantRows((prev) =>
-                                          prev.map((row) =>
-                                            row.id === variant.id
-                                              ? {
-                                                  ...row,
-                                                  price: value,
-                                                }
-                                              : row
-                                          )
-                                        );
-
-                                      }}
-                                    />
-
-                                  </div>
-
-                                  {/* STOCK */}
-                                  <div className="modern-combo-field">
-
-                                    <label>Stock</label>
-
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      placeholder="0"
-                                      value={variant.inventory ?? ""}
-                                      onChange={(e) => {
-
-                                        const value = e.target.value;
-
-                                        setVariantRows((prev) =>
-                                          prev.map((row) =>
-                                            row.id === variant.id
-                                              ? {
-                                                  ...row,
-                                                  inventory: Number(value)
-                                                }
-                                              : row
-                                          )
-                                        );
-
-                                      }}
-                                    />
-
-                                  </div>
-
-
-                                  {/* DISCOUNT */}
-                                  <div className="modern-combo-discount">
-
-                                    <div className="modern-combo-discount-left">
-
-                                      <div className="premium-mini-icon">
-                                        <FiPercent />
-                                      </div>
-
-                                      <div>
-
-                                        <h5>
-                                          Promotion
-                                        </h5>
-
-                                        <p>
-                                          Activer un prix promo
-                                        </p>
-
-                                      </div>
-
+                        )
+                    }>
+                    {variantOptions.length === 0 ? (
+                        <div className="np-empty-box">
+                            <FiLayers size={28} />
+                            <h4>Aucune variante</h4>
+                            <p>Ajoutez des options comme taille ou couleur pour gérer prix, images et stocks par variante.</p>
+                            <button type="button" className="np-outline-btn" onClick={addVariantOption}>
+                                <FiPlus size={13} /> Ajouter une variante
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="np-variants-list">
+                            {variantOptions.map((option) => (
+                                <div key={option.id} className="np-variant-card">
+                                    <div className="np-variant-head">
+                                        <div className="np-field" style={{ flex: 1 }}>
+                                            <label>Nom de la variante</label>
+                                            <input type="text" placeholder="Ex : Taille, Couleur…" value={option.name}
+                                                onChange={(e) => updateVariantName(option.id, e.target.value)} />
+                                        </div>
+                                        <button type="button" className="np-danger-icon-btn" onClick={() => removeVariantOption(option.id)}>
+                                            <FiTrash2 size={14} />
+                                        </button>
                                     </div>
-
-                                    <label className="switch">
-
-                                      <input
-                                        type="checkbox"
-                                        checked={variant.hasDiscount}
-                                        onChange={(e) => {
-
-                                          const checked = e.target.checked;
-
-                                          setVariantRows((prev) =>
-                                            prev.map((row) =>
-                                              row.id === variant.id
-                                                ? {
-                                                    ...row,
-                                                    hasDiscount:
-                                                      checked,
-                                                  }
-                                                : row
-                                            )
-                                          );
-
-                                        }}
-                                      />
-
-                                      <span className="slider"></span>
-
-                                    </label>
-
-                                  </div>
-
-
-                                  {/* DISCOUNT FIELDS */}
-                                  {variant.hasDiscount && (
-
-                                    <div className="modern-combo-discount-grid">
-
-                                      {/* ORIGINAL */}
-                                      <div className="modern-combo-field">
-
-                                        <label>
-                                          Prix original
-                                        </label>
-
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          placeholder="0.000"
-                                          value={variant.oldPrice ?? ""}
-                                          onChange={(e) => {
-
-                                            const value = e.target.value;
-
-                                            setVariantRows((prev) =>
-                                              prev.map((row) =>
-                                                row.id === variant.id
-                                                  ? {
-                                                      ...row,
-                                                      oldPrice: value,
-                                                    }
-                                                  : row
-                                              )
-                                            );
-
-                                          }}
-                                        />
-
-                                      </div>
-
-
-                                      {/* DISCOUNTED */}
-                                      <div className="modern-combo-field">
-
-                                        <label>
-                                          Prix promotionnel
-                                        </label>
-
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          placeholder="0.000"
-                                          value={variant.price ?? ""}
-                                          onChange={(e) => {
-                                            const value = e.target.value;
-
-                                            setVariantRows((prev) =>
-                                              prev.map((row) =>
-                                                row.id === variant.id
-                                                  ? {
-                                                      ...row,
-                                                      price: value,
-                                                    }
-                                                  : row
-                                              )
-                                            );
-
-                                          }}
-                                        />
-
-                                      </div>
-
+                                    <div className="np-field"><label>Options</label></div>
+                                    <div className="np-option-input-row">
+                                        <input type="text" placeholder="Ajouter une option + Entrée"
+                                            value={variantDrafts[option.id] || ""}
+                                            onChange={(e) => setVariantDrafts((p) => ({ ...p, [option.id]: e.target.value }))}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" || e.key === ",") {
+                                                    e.preventDefault();
+                                                    const v = (variantDrafts[option.id] || "").trim();
+                                                    if (!v) return;
+                                                    addVariantValue(option.id, v);
+                                                    setVariantDrafts((p) => ({ ...p, [option.id]: "" }));
+                                                }
+                                            }} />
+                                        <button type="button" className="np-option-add-btn"
+                                            onClick={() => {
+                                                const v = (variantDrafts[option.id] || "").trim();
+                                                if (!v) return;
+                                                addVariantValue(option.id, v);
+                                                setVariantDrafts((p) => ({ ...p, [option.id]: "" }));
+                                            }}>
+                                            <FiPlus size={13} /> Ajouter
+                                        </button>
                                     </div>
-
-                                  )}
-
+                                    <div className="np-tags">
+                                        {option.values.map((val, idx) => (
+                                            <div key={idx} className="np-tag">
+                                                <span>{val}</span>
+                                                <button type="button" onClick={() => removeVariantValue(option.id, idx)}>
+                                                    <FiX size={11} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-
-                              </div>
-
-                            )}
-
-                          </div>
-
-                        );
-
-                      })
-
+                            ))}
+                        </div>
                     )}
 
-                  </div>
+                    {variantRows.length > 0 && (
+                        <>
+                            <div className="np-divider" />
+                            <div className="np-combos-head">
+                                <div>
+                                    <h4>Combinaisons</h4>
+                                    <p>Prix, promotion et stock de chaque variante.</p>
+                                </div>
+                                <span className="np-combos-count">{variantRows.length}</span>
+                            </div>
+                            <div className="np-combos-box">
+                                {hasNestedVariants ? (
+                                    groupedVariants.map((group, gi) => {
+                                        const groupKey = `group-${gi}`;
+                                        const isOpen   = openedGroups[groupKey] === true;
+                                        return (
+                                            <div key={gi} className="np-group">
+                                                <button type="button" className="np-group-trigger"
+                                                    onClick={() => toggleGroup(groupKey)}>
+                                                    <div className="np-group-left">
+                                                        <span className="np-group-badge">{group.parentLabel}</span>
+                                                        <span className="np-group-count">{group.variants.length} variantes</span>
+                                                    </div>
+                                                    <FiChevronDown size={14} className={isOpen ? "np-rotate" : ""} />
+                                                </button>
+                                                {isOpen && (
+                                                    <div className="np-group-content">
+                                                        {group.variants.map((v) => (
+                                                            <VariantComboRow
+                                                                key={v.id}
+                                                                variant={v}
+                                                                hasNestedVariants={hasNestedVariants}
+                                                                isOpen={openedGroups[v.id] === true}
+                                                                onToggle={() => toggleGroup(v.id)}
+                                                                onVariantChange={handleVariantChange}
+                                                                onVariantImageChange={handleVariantImageChange}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                ) : (
+                                    variantRows.map((v) => (
+                                        <VariantComboRow
+                                            key={v.id}
+                                            variant={v}
+                                            hasNestedVariants={hasNestedVariants}
+                                            isOpen={openedGroups[v.id] === true}
+                                            onToggle={() => toggleGroup(v.id)}
+                                            onVariantChange={handleVariantChange}
+                                            onVariantImageChange={handleVariantImageChange}
+                                        />
+                                    ))
+                                )}
+                            </div>
+                        </>
+                    )}
+                </SectionCard>
 
-                </>
+                {/* 8 — LOTS */}
+                <SectionCard icon={LuArchive} title="Vente en lot" subtitle="Tarifs dégressifs pour les achats en grande quantité."
+                    rightSlot={
+                        <div className="np-switch-wrap">
+                            <span>Activer</span>
+                            <Toggle checked={enableLots} onChange={() => setEnableLots((v) => !v)} />
+                        </div>
+                    }>
+                    {!enableLots ? (
+                        <div className="np-empty-box">
+                            <LuArchive size={24} />
+                            <h4>Vente en lot désactivée</h4>
+                            <p>Activez pour proposer des prix spéciaux à l'achat de plusieurs pièces.</p>
+                        </div>
+                    ) : (
+                        <div className="np-lots-wrap">
+                            {lotRules.length === 0 && <p className="np-lots-empty">Aucun lot ajouté.</p>}
+                            {lotRules.map((lot, i) => (
+                                <div key={lot.id} className="np-lot-card">
+                                    <div className="np-lot-head">
+                                        <div>
+                                            <p className="np-lot-title">Lot {i + 1}</p>
+                                            <p className="np-lot-sub">Configurez ce pack.</p>
+                                        </div>
+                                        <button type="button" className="np-danger-icon-btn" onClick={() => removeLotRule(lot.id)}>
+                                            <FiTrash2 size={14} />
+                                        </button>
+                                    </div>
+                                    <div className="np-two-col">
+                                        <div className="np-field">
+                                            <label>Pièces / lot</label>
+                                            <input 
+                                                type="number" 
+                                                min="1" 
+                                                placeholder="Ex : 10" 
+                                                value={lot.quantity} 
+                                                onChange={(e) => updateLotRule(lot.id, "quantity", e.target.value)} 
+                                            />
+                                        </div>
+                                        <div className="np-field">
+                                            <label>Prix du lot (TND)</label>
+                                            <input 
+                                                type="number" 
+                                                min="0" 
+                                                placeholder="0.000" 
+                                                alue={lot.price} 
+                                                onChange={(e) => updateLotRule(lot.id, "price", e.target.value)} 
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <button type="button" className="np-add-lot-btn" onClick={addLotRule}>
+                                <FiPlus size={14} /> Ajouter un lot
+                            </button>
+                        </div>
+                    )}
+                </SectionCard>
 
-              )}
-
-            </div>
-
-          </div>
-
-          {/* VENTE EN LOT */}
-          <div className="product-card">
-
-            <div className="product-card-header product-card-header-column-mobile">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <LuArchive />
-                </div>
-
-                <div>
-                  <h3>Vente en lot</h3>
-                  <p>
-                    Proposez des tarifs dégressifs
-                    pour les achats en grande quantité.
-                  </p>
-                </div>
-
-              </div>
-
-              <div className="inventory-switch-wrap">
-
-                <span>Activer</span>
-
-                <label className="switch">
-
-                  <input
-                    type="checkbox"
-                    checked={enableLots}
-                    onChange={() =>
-                      setEnableLots(!enableLots)
-                    }
-                  />
-
-                  <span className="slider"></span>
-
-                </label>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content">
-
-              {!enableLots ? (
-
-                <div className="empty-lots-box">
-
-                  <LuArchive />
-
-                  <h4>Vente en lot désactivée</h4>
-
-                  <p>
-                    Activez cette option pour permettre
-                    aux clients d’acheter plusieurs pièces
-                    avec des prix spéciaux.
-                  </p>
-
-                </div>
-
-              ) : (
-
-                <div className="modern-lots-wrapper">
-
-                  {lotRules.length === 0 && (
-
-                    <div className="modern-lots-empty">
-
-                      <p>
-                        Aucun lot ajouté pour le moment.
-                      </p>
-
+                {/* 9 — SUMMARY + SUBMIT */}
+                <SectionCard icon={FiFileText} title="Résumé" subtitle="Vérifiez avant de publier.">
+                    <div className="np-summary">
+                        {[
+                            ["Images",         images.length],
+                            ["Variantes",      variantRows.length],
+                            ["Lots",           lotRules.length],
+                            ["Catégorie",      category?.label || "—"],
+                            ["Sous-catégorie", subcategory?.label || "—"],
+                        ].map(([label, value]) => (
+                            <div key={label} className="np-summary-row">
+                                <span>{label}</span>
+                                <strong>{value}</strong>
+                            </div>
+                        ))}
                     </div>
 
-                  )}
-
-
-                  <div className="modern-lots-grid">
-
-                    {lotRules.map((lot, index) => (
-
-                      <div
-                        key={lot.id}
-                        className="modern-lot-card"
-                      >
-
-                        {/* TOP */}
-                        <div className="modern-lot-top">
-
-                          <div>
-
-                            <h4>
-                              Lot {index + 1}
-                            </h4>
-
-                            <p>
-                              Configurez ce pack produit.
-                            </p>
-
-                          </div>
-
-                          <button
-                            type="button"
-                            className="modern-remove-btn"
-                            onClick={() =>
-                              removeLotRule(lot.id)
-                            }
-                          >
-
-                            <FiTrash2 />
-
-                          </button>
-
-                        </div>
-
-
-                        {/* GRID */}
-                        <div className="modern-lot-inputs">
-
-                          {/* QUANTITY */}
-                          <div className="form-group">
-
-                            <label>
-                              Pièces / lot
-                            </label>
-
-                            <input
-                              type="number"
-                              min="1"
-                              placeholder="Ex : 10"
-                              value={lot.quantity}
-                              onChange={(e) =>
-                                updateLotRule(
-                                  lot.id,
-                                  "quantity",
-                                  e.target.value
-                                )
-                              }
-                            />
-
-                          </div>
-
-                          {/* PRICE */}
-                          <div className="form-group">
-
-                            <label>
-                              Prix du lot (DT)
-                            </label>
-
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="0.000"
-                              value={lot.price}
-                              onChange={(e) =>
-                                updateLotRule(
-                                  lot.id,
-                                  "price",
-                                  e.target.value
-                                )
-                              }
-                            />
-
-                          </div>
-
-                        </div>
-
-                      </div>
-
-                    ))}
-
-                  </div>
-
-
-                  {/* ADD */}
-                  <button
-                    type="button"
-                    className="modern-add-lot-btn"
-                    onClick={addLotRule}
-                  >
-
-                    <FiPlus />
-
-                    Ajouter un lot
-
-                  </button>
-
-                </div>
-
-              )}
-
-            </div>
-
-          </div>
-
-          {/* RESUMEE */}
-          <div className="product-card">
-
-            <div className="product-card-header">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <FiFileText />
-                </div>
-
-                <div>
-
-                  <h3>Résumé</h3>
-
-                  <p>
-                    Vérifiez les informations avant publication.
-                  </p>
-
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content">
-
-              <div className="summary-box">
-
-                <ul>
-
-                  <li>
-
-                    <span>Images</span>
-
-                    <strong>{images.length}</strong>
-
-                  </li>
-
-                  <li>
-
-                    <span>Variantes</span>
-
-                    <strong>{variantRows.length}</strong>
-
-                  </li>
-
-                  <li>
-
-                    <span>Lots</span>
-
-                    <strong>{lotRules.length}</strong>
-
-                  </li>
-
-                  <li>
-
-                    <span>Catégorie</span>
-
-                    <strong>
-                      {category?.label || "-"}
-                    </strong>
-
-                  </li>
-
-                  <li>
-
-                    <span>Sous-catégorie</span>
-
-                    <strong>
-                      {subcategory?.label || "-"}
-                    </strong>
-
-                  </li>
-
-                </ul>
-
-              </div>
-
-              {/* TOAST */}
-              {toast && (
-                <div className={`checkout-toast ${toast.type}`} style={{minWidth:'250px'}}>
-                  <div className="toast-left">
-                    <div className={`toast-icon ${toast.type}`}>
-                      {toast.type === "success" ? (
-                        <FiCheckCircle />
-                      ) : (
-                        <FiAlertCircle />
-                      )}
+                    <Toast toast={toast} onClose={() => setToast(null)} />
+
+                    <div className="np-submit-wrap">
+                        <button type="submit" className="np-submit-btn" disabled={loading}>
+                            {loading
+                                ? <><FiLoader className="np-spin" size={16} /> {progressLabel}</>
+                                : <><FiSave size={15} /> Enregistrer le produit</>}
+                        </button>
+                        <Link href="/dashboard/products" className="np-cancel-btn">Annuler</Link>
                     </div>
-                      
-                    <p>{toast.message}</p>
-                  </div>
-                      
-                  <button
-                    className="toast-close"
-                    onClick={() => setToast(null)}
-                  >
-                    <FiX />
-                  </button>
-                </div>
-              )}
+                </SectionCard>
 
-              <div className="sidebar-actions">
-
-                <button
-                  type="submit"
-                  className="save-btn"
-                  disabled={loading}
-                >
-
-                  {loading ? (
-                    <>
-                      <span className="btn-spinner"></span>
-                      Enregistrement...
-                    </>
-                  ) : (
-                    "Enregistrer le produit"
-                  )}
-
-                </button>
-
-                <button
-                  type="button"
-                  className="cancel-btn"
-                >
-                  Annuler
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
+            </form>
         </div>
-
-      </form>
-
-    </div>
-  );
+    );
 }
-
-/*
-
-        <aside className="product-sidebar">
-
-          <div className="product-card sidebar-card sticky-sidebar">
-
-            <div className="product-card-header">
-
-              <div className="product-card-title-wrap">
-
-                <div className="product-card-icon">
-                  <FiFileText />
-                </div>
-
-                <div>
-                  <h3>Organisation</h3>
-                  <p>Résumé du produit</p>
-                </div>
-
-              </div>
-
-            </div>
-
-            <div className="product-card-content sidebar-content">
-
-              <div className="form-group">
-
-                <label>Catégorie</label>
-
-                <select
-                  value={category?.slug || ""}
-                  onChange={(e) => {
-                    const selectedCategory = categories.find(
-                      (cat) => cat.slug === e.target.value
-                    );
-
-                    setCategory(selectedCategory);
-                  }}
-                >
-                  <option value="">
-                    Sélectionner
-                  </option>
-
-                  {categories.map((cat) => (
-                    <option key={cat.slug} value={cat.slug}>
-                      {cat.label}
-                    </option>
-                  ))}
-
-                </select>
-
-              </div>
-
-              <div className="summary-box">
-
-                <h4>Résumé</h4>
-
-                <ul>
-
-                  <li>
-                    <span>Images</span>
-                    <strong>{images.length}</strong>
-                  </li>
-
-                  <li>
-                    <span>Variantes</span>
-                    <strong>{variantRows.length}</strong>
-                  </li>
-
-                  <li>
-                    <span>Lots</span>
-                    <strong>{lotRules.length}</strong>
-                  </li>
-
-                </ul>
-
-              </div>
-
-              {toast && (
-                <div className={`checkout-toast ${toast.type}`} style={{minWidth:'250px'}}>
-                  <div className="toast-left">
-                    <div className={`toast-icon ${toast.type}`}>
-                      {toast.type === "success" ? (
-                        <FiCheckCircle />
-                      ) : (
-                        <FiAlertCircle />
-                      )}
-                    </div>
-                      
-                    <p>{toast.message}</p>
-                  </div>
-                      
-                  <button
-                    className="toast-close"
-                    onClick={() => setToast(null)}
-                  >
-                    <FiX />
-                  </button>
-                </div>
-              )}
-
-              <div className="sidebar-actions">
-
-                <button
-                  type="submit"
-                  className="save-btn"
-                  disabled={loading}
-                >
-
-                  {loading ? (
-                    <>
-                      <span className="btn-spinner"></span>
-                      Enregistrement...
-                    </>
-                  ) : (
-                    "Enregistrer le produit"
-                  )}
-
-                </button>
-
-                <button
-                  type="button"
-                  className="cancel-btn"
-                >
-                  Annuler
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        </aside>
-*/

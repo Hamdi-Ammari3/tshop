@@ -1,678 +1,545 @@
 "use client";
 
-import { useMemo, useState,useEffect  } from "react";
-import { useParams, useRouter }
-from "next/navigation";
+import { useMemo, useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {FiMinus,FiPlus,FiArrowLeft,FiShoppingCart,FiChevronLeft,FiChevronRight,FiShield,FiTruck} from "react-icons/fi";
-import { FaWhatsapp } from "react-icons/fa";
+import {
+  FiMinus, FiPlus, FiShoppingCart, FiChevronLeft, FiChevronRight,
+  FiChevronRight as FiChevronRightCrumb, FiShield, FiTruck, FiZap,
+  FiHeart, FiShare2, FiAlertCircle,
+} from "react-icons/fi";
 import { usePublicStore } from "../../../../../context/PublicStoreContext";
 import "./product.css";
 
+const norm = (v) => String(v ?? "").trim().toLowerCase();
+
 export default function ProductPage() {
-
   const router = useRouter();
-
-  const {store,products,addToCart} = usePublicStore();
+  const { store, products, addToCart } = usePublicStore();
 
   const params = useParams();
-
   const slug = params.slug;
-
   const productId = params.productId;
 
-  const product = products.find((p) => p.id === productId);
+  const product = products?.find((p) => p.id === productId);
 
-  const [selectedIndex,setSelectedIndex] = useState(0);
-  const [quantity,setQuantity] = useState(1);
-  const [ordering,setOrdering] = useState(false);
-  const [selectedOptions,setSelectedOptions] = useState({});
-  const [selectedLot,setSelectedLot] = useState(null);
-  const [manualImage,setManualImage] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+  const [ordering, setOrdering] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState({});
+  const [selectedLot, setSelectedLot] = useState(null);
+  const [manualImage, setManualImage] = useState(true);
+  const [variantError, setVariantError] = useState("");
 
-  /* DEFAULT OPTIONS */
+  const isLocalhost = typeof window !== "undefined" && window.location.hostname === "localhost";
+  const homeUrl = isLocalhost ? `/store/${slug}` : "/";
+  const checkoutUrl = isLocalhost ? `/store/${slug}/checkout` : "/checkout";
+
+  // Reset all per-product state whenever navigating to a different product
+  // (e.g. via a "similar product" link) so nothing leaks across products.
   useEffect(() => {
+    setSelectedOptions({});
+    setSelectedLot(null);
+    setQuantity(1);
+    setSelectedIndex(0);
+    setManualImage(true);
+    setVariantError("");
+  }, [productId]);
 
-    if (product?.hasVariants && product.options?.length) {
+  function findProductOption(variantOptionName) {
+    return product?.options?.find((po) => norm(po.name) === norm(variantOptionName));
+  }
 
-      const defaults = {};
+  function variantMatches(variant, selections) {
+    if (!variant?.options) return false;
+    return variant.options.every((variantOption) => {
+      const productOption = findProductOption(variantOption.name);
+      if (!productOption) return false;
+      return norm(selections[productOption.name]) === norm(variantOption.value);
+    });
+  }
 
-      product.options.forEach((option,index) => {
+  function isValueAvailable(optionName, value, selections) {
+    return !!product?.variants?.find((variant) => {
+      if (!variant?.options || variant.inventory <= 0) return false;
 
-        const firstAvailable = product.variants.find((variant) => {
+      return variant.options.every((variantOption) => {
+        const productOption = findProductOption(variantOption.name);
+        if (!productOption) return false;
 
-          const match = variant.options.find((o) => o.name === option.name);
-
-          return (
-            match && variant.inventory > 0
-          );
-
-        });
-
-        const optionMatch = firstAvailable?.options.find((o) => o.name === option.name);
-
-        if (optionMatch) {
-
-          defaults[option.name] = optionMatch.value;
-
+        if (norm(productOption.name) === norm(optionName)) {
+          return norm(variantOption.value) === norm(value);
         }
 
+        const alreadySelected = selections[productOption.name];
+        if (alreadySelected === undefined || alreadySelected === null || alreadySelected === "") {
+          return true;
+        }
+        return norm(alreadySelected) === norm(variantOption.value);
       });
-
-      setSelectedOptions(defaults);
-
-    }
-
-  }, []);
+    });
+  }
 
   const currentImage = product?.images?.[selectedIndex] || "/placeholder.png";
 
-  /* SELECTED VARIANT */
-  const selectedVariant = product?.variants?.find((variant) => {
+  const selectedVariant = product?.variants?.find((variant) =>
+    variantMatches(variant, selectedOptions)
+  );
 
-    return variant.options.every((option) => selectedOptions[option.name] === option.value);
+  const variantSelectionRequired = !!(product?.hasVariants && product?.options?.length > 0);
+  const variantSelectionComplete = !variantSelectionRequired || !!selectedVariant;
 
-  });
+  const activeImage = manualImage ? currentImage : selectedVariant?.image || currentImage;
 
-  /* ACTIVE IMAGE */
-  const activeImage = manualImage ? currentImage : (selectedVariant?.image || currentImage);
+  const activePrice = selectedVariant?.price ?? product?.price;
+  const activeOldPrice = selectedVariant?.oldPrice ?? product?.oldPrice;
+  const activeInventory = selectedVariant?.inventory ?? product?.inventory;
+  const maxQuantity = product?.trackInventory ? Number(activeInventory || 0) : Infinity;
 
-  /* ACTIVE PRICE */
-  const activePrice = selectedVariant?.price || product.price;
+  /* Lots can't be picked until a required variant has actually been
+     selected — a lot's discount is tied to a specific stock number, and
+     before a variant is chosen there's no reliable per-variant stock to
+     validate it against. */
+  const lotsLocked = variantSelectionRequired && !variantSelectionComplete;
 
-  /* ACTIVE OLD PRICE */
-  const activeOldPrice = selectedVariant?.oldPrice || product.oldPrice;
-
-  /* ACTIVE INVENTORY */
-  const activeInventory = selectedVariant?.inventory ?? product.inventory;
-
-  /* MAX QUANTITY */
-  const maxQuantity = product.trackInventory ? Number(activeInventory || 0) : Infinity; 
-
-  /* TOTAL */
   const totalPrice = useMemo(() => {
-
     if (!product) return 0;
-
-    // LOT PRICE
-    if (selectedLot !== null && product.lotRules?.lots?.[selectedLot] ) {
-
+    if (selectedLot !== null && product.lotRules?.lots?.[selectedLot]) {
       return Number(product.lotRules.lots[selectedLot].price || 0);
-
     }
+    return Number(activePrice) * quantity;
+  }, [product, quantity, activePrice, selectedLot]);
 
-    return (Number(activePrice) * quantity);
+  const discountPercent =
+    product?.hasDiscount && product?.oldPrice && product?.price
+      ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100)
+      : 0;
 
-  }, [product,quantity,activePrice,selectedLot]);
+  //Quantity check
+  const applyQuantity = (newQty) => {
+    setQuantity(newQty);
 
-  // INCREASE QUANTITY
+    const lots = product?.lotRules?.enabled ? product?.lotRules?.lots || [] : [];
+    const matchingLotIndex = lots.findIndex((lot) => Number(lot.quantity) === newQty);
+
+    // Never auto-apply a lot while a required variant hasn't been chosen
+    // yet — same guard as the lot buttons themselves.
+    setSelectedLot(matchingLotIndex !== -1 && !lotsLocked ? matchingLotIndex : null);
+  };
+
   const increaseQty = () => {
+    if (product.trackInventory && quantity >= maxQuantity) return;
+    applyQuantity(quantity + 1);
+  };
 
-    if (product.trackInventory && quantity >= maxQuantity) {
+  const decreaseQty = () => {
+    if (quantity <= 1) return;
+    applyQuantity(quantity - 1);
+  };
+
+  useEffect(() => {
+    if (product?.trackInventory && quantity > maxQuantity) {
+      setQuantity(maxQuantity > 0 ? maxQuantity : 1);
+    }
+  }, [quantity, maxQuantity, product?.trackInventory]);
+
+  /* Re-validate the selected lot every time the active variant (and thus
+     its available stock) changes. A lot chosen against one variant's
+     stock — or before any variant was chosen at all — must never keep
+     applying its discounted price once the real, current stock can't
+     actually cover that lot's quantity. This is what closes both:
+     (1) picking a lot before selecting a variant that turns out to have
+         less stock than the lot requires, and
+     (2) switching from a variant with enough stock to one that doesn't,
+         while a lot is still active. */
+  useEffect(() => {
+    if (selectedLot === null) return;
+
+    const lot = product?.lotRules?.lots?.[selectedLot];
+    if (!lot) return;
+
+    const stillValid =
+      !lotsLocked &&
+      (!product?.trackInventory || Number(lot.quantity) <= Number(activeInventory || 0));
+
+    if (!stillValid) {
+      setSelectedLot(null);
+      setQuantity((q) => {
+        if (!product?.trackInventory) return q;
+        const clampMax = Number(activeInventory || 0);
+        return Math.min(q, clampMax > 0 ? clampMax : 1);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVariant, activeInventory, lotsLocked]);
+
+  const nextImage = () => {
+    if (!product?.images?.length) return;
+    setManualImage(true);
+    setSelectedIndex((prev) => (prev === product.images.length - 1 ? 0 : prev + 1));
+  };
+
+  const prevImage = () => {
+    if (!product?.images?.length) return;
+    setManualImage(true);
+    setSelectedIndex((prev) => (prev === 0 ? product.images.length - 1 : prev - 1));
+  };
+
+  const handleAddToCart = () => {
+    if (!variantSelectionComplete) {
+      setVariantError("Veuillez sélectionner toutes les options avant de continuer.");
       return;
     }
-
-    // REMOVE LOT SELECTION
-    if (selectedLot !== null) {
-
-      setSelectedLot(null);
-
-    }
-
-    setQuantity((prev) => prev + 1);
-
-  };
-
-  // DECREASE QUANTITY
-  const decreaseQty = () => {
-
-    if (quantity <= 1) return;
-
-    // REMOVE LOT SELECTION
-    if (selectedLot !== null) {
-
-      setSelectedLot(null);
-
-    }
-
-    setQuantity((prev) => prev - 1);
-  };
-
-  useEffect(() => {
-
-    if (product.trackInventory && quantity > maxQuantity) {
-
-      setQuantity(maxQuantity > 0 ? maxQuantity: 1);
-
-    }
-
-  }, [quantity,maxQuantity,product.trackInventory]);
-
-  // NEXT IMAGE
-  const nextImage = () => {
-
-    if (!product?.images?.length) return;
-
-    setManualImage(true);
-
-    setSelectedIndex((prev) => prev === product.images.length - 1 ? 0 : prev + 1);
-  };
-
-  // PREV IMAGE
-  const prevImage = () => {
-
-    if (!product?.images?.length) return;
-
-    setManualImage(true);
-
-    setSelectedIndex((prev) => prev === 0 ? product.images.length - 1 : prev - 1);
-  };
-
-  useEffect(() => {
-
-    if (selectedVariant?.image) {
-
-      const variantImageIndex = product.images.findIndex((img) => img ===selectedVariant.image);
-
-      if (variantImageIndex !== -1) {
-
-        setSelectedIndex(variantImageIndex);
-
-      }
-
-    }
-
-  }, [selectedVariant,product.images]);
-
-
-  // ADD TO CART
-  const handleAddToCart = () => {
+    setVariantError("");
 
     const variantKey = selectedVariant?.variantKey || "";
-
     const lotKey = selectedLot !== null ? `lot-${selectedLot}` : "no-lot";
-
     const cartItemId = `${product.id}-${variantKey}-${lotKey}`;
 
     addToCart(
       {
         ...product,
-
         cartItemId,
-
         selectedVariant,
-
         selectedOptions,
-
         selectedLot: selectedLot !== null ? product.lotRules.lots[selectedLot] : null,
-
         finalPrice: selectedLot !== null ? product.lotRules.lots[selectedLot]?.price || 0 : activePrice,
       },
       quantity
     );
-
   };
 
-  /* BUY NOW */
   const handleBuyNow = async () => {
+    if (!variantSelectionComplete) {
+      setVariantError("Veuillez sélectionner toutes les options avant de continuer.");
+      return;
+    }
+    setVariantError("");
 
     try {
       setOrdering(true);
 
       const variantKey = selectedVariant?.variantKey || "";
-
       const lotKey = selectedLot !== null ? `lot-${selectedLot}` : "no-lot";
-
       const cartItemId = `${product.id}-${variantKey}-${lotKey}`;
 
       addToCart(
         {
           ...product,
-
           cartItemId,
-
           selectedVariant,
-
           selectedOptions,
-
           selectedLot: selectedLot !== null ? product.lotRules.lots[selectedLot] : null,
-
           finalPrice: selectedLot !== null ? product.lotRules.lots[selectedLot]?.price || 0 : activePrice,
         },
         quantity
       );
 
-      router.push("/checkout");
-      //router.push("http://localhost:3000/store/hamdi-store/checkout");
-
+      router.push(checkoutUrl);
     } finally {
       setOrdering(false);
     }
   };
 
-  const description = product.description || "Aucune description disponible pour ce produit.";
-
-  const isLongDescription = description.length > 180;
+  const description = product?.description || "Aucune description disponible pour ce produit.";
 
   /* NOT FOUND */
   if (!product || !store) {
     return (
       <div className="product-not-found">
-
-        <h1>
-          Produit introuvable
-        </h1>
-
-        <p>
-          Ce produit n'existe pas ou a été supprimé.
-        </p>
-
+        <h1>Produit introuvable</h1>
+        <p>Ce produit n'existe pas ou a été supprimé.</p>
+        <Link href={homeUrl} className="not-found-btn">
+          Retour à la boutique
+        </Link>
       </div>
     );
   }
 
+  const isOutOfStock = product.trackInventory && activeInventory <= 0;
+
   return (
     <div className="product-page">
 
-      {/* TOP */}
-      <div className="product-top">
+      {/* BREADCRUMB */}
+      <nav className="breadcrumb-nav">
+        <Link href={homeUrl}>Accueil</Link>
+        <FiChevronRightCrumb size={14} />
+        {product.category && (
+          <>
+            <span className="breadcrumb-category">{product.category}</span>
+            <FiChevronRightCrumb size={14} />
+          </>
+        )}
+        <span className="breadcrumb-current">{product.name}</span>
+      </nav>
 
-        <Link
-          href="/"
-          //href="/store/hamdi-store"
-          className="back-store-btn"
-        >
+      <main className="product-main">
+        <div className="product-grid">
 
-          <FiArrowLeft />
+          {/* GALLERY */}
+          <section className="product-gallery-col">
+            <div className="gallery-card">
+              <div className="gallery-main">
+                {product.images?.length > 1 && (
+                  <>
+                    <button className="gallery-arrow left-arrow" onClick={prevImage} aria-label="Image précédente">
+                      <FiChevronLeft />
+                    </button>
+                    <button className="gallery-arrow right-arrow" onClick={nextImage} aria-label="Image suivante">
+                      <FiChevronRight />
+                    </button>
+                  </>
+                )}
 
-          Retour à la boutique
+                <Image src={activeImage} alt={product.name} fill className="product-main-img" />
 
-        </Link>
+                {discountPercent > 0 && (
+                  <span className="gallery-badge-discount">-{discountPercent}%</span>
+                )}
 
-      </div>
-
-      {/* CONTENT */}
-      <div className="product-container">
-
-        {/* LEFT */}
-        <div className="product-gallery">
-
-          <div className="product-main-image">
-
-            {product.images?.length > 1 && (
-              <>
-                <button
-                  className="gallery-arrow left-arrow"
-                  onClick={prevImage}
-                >
-                  <FiChevronLeft />
-                </button>
-
-                <button
-                  className="gallery-arrow right-arrow"
-                  onClick={nextImage}
-                >
-                  <FiChevronRight />
-                </button>
-              </>
-            )}
-
-            <Image
-              src={activeImage}
-              alt={product.name}
-              fill
-              className="product-main-img"
-            />
-
-            {product.hasDiscount && (
-              <div className="product-discount-badge">
-                - {Math.round(((product.oldPrice - product.price) /product.oldPrice) * 100)} %
+                {!manualImage && selectedVariant?.image && (
+                  <span className="gallery-badge-variant">
+                    {Object.values(selectedOptions).join(" / ")}
+                  </span>
+                )}
               </div>
-            )}
 
-          </div>
+              {product.images?.length > 1 && (
+                <div className="product-thumbnails">
+                  {product.images.map((img, index) => (
+                    <button
+                      key={index}
+                      className={`thumbnail-btn ${
+                        manualImage && selectedIndex === index ? "active-thumbnail" : ""
+                      }`}
+                      onClick={() => {
+                        setManualImage(true);
+                        setSelectedIndex(index);
+                      }}
+                      aria-label={`Vue ${index + 1}`}
+                    >
+                      <img src={img} alt="" loading="lazy" className="thumbnail-image" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
 
-          {/* THUMBNAILS */}
-          {product.images?.length > 1 && (
-            <div className="product-thumbnails">
+          {/* DETAILS */}
+          <section className="product-details-col">
+            <div className="details-card">
+              <h1 className="product-title">{product.name}</h1>
 
-              {product.images.map(
-                (img, index) => (
+              <div className="price-block">
+                <div className="price-row">
+                  <span className="price-current">{activePrice} TND</span>
+                  {activeOldPrice && <span className="price-old">{activeOldPrice} TND</span>}
+                  {discountPercent > 0 && <span className="price-discount-chip">-{discountPercent}%</span>}
+                </div>
+              </div>
 
-                  <button
-                    key={index}
-                    className={`thumbnail-btn ${selectedIndex === index ? "active-thumbnail" : ""}`}
-                    onClick={() => {
+              <div className="description-block">
+                <h2 className="description-title">Description</h2>
+                <p className="description-text">{description}</p>
+              </div>
 
-                      setManualImage(true);
+              {/* VARIANTS */}
+              {product.hasVariants && product.options?.length > 0 && (
+                <div className="product-variants-section">
+                  {product.options.map((option, index) => (
+                    <div key={index} className="variant-group">
+                      <div className="variant-group-top">
+                        <h4>{option.name}</h4>
+                        <span className={selectedOptions[option.name] ? "" : "variant-unselected-hint"}>
+                          {selectedOptions[option.name] || "Non sélectionné"}
+                        </span>
+                      </div>
 
-                      setSelectedIndex(index);
+                      <div className="variant-values">
+                        {option.values.map((value, i) => {
+                          const isOut = !isValueAvailable(option.name, value, selectedOptions);
+                          const isActive = selectedOptions[option.name] === value;
 
-                    }}
-                  >
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              disabled={isOut}
+                              className={`variant-btn ${isActive ? "active-variant" : ""} ${
+                                isOut ? "disabled-variant" : ""
+                              }`}
+                              onClick={() => {
+                                setVariantError("");
+                                setManualImage(false);
+                                setSelectedOptions((prev) => ({
+                                  ...prev,
+                                  [option.name]: value,
+                                }));
+                              }}
+                            >
+                              {value}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
 
-                    <img
-                      src={img}
-                      alt="thumbnail image"
-                      loading="lazy"
-                      className="thumbnail-image"
-                    />
-
-                  </button>
-                )
+                  {variantError && (
+                    <p className="variant-error">
+                      <FiAlertCircle size={13} />
+                      {variantError}
+                    </p>
+                  )}
+                </div>
               )}
 
-            </div>
-          )}
-
-        </div>
-
-        {/* RIGHT */}
-        <div className="product-details">
-
-          <h1>{product.name}</h1>
-
-          <p>{product.description}</p>
-
-          {/* PRICE */}
-          <div className="product-price-box">
-
-            <div className="product-price">
-
-              <span>
-                {activePrice} TND
-              </span>
-
-              {activeOldPrice && (
-                <small>
-                  {activeOldPrice} TND
-                </small>
-              )}
-
-            </div>
-
-            <p>
-              Prix unitaire
-            </p>
-
-          </div>
-
-          {/* VARIANTS */}
-          {product.hasVariants && product.options?.length > 0 && (
-            <div className="product-variants-section">
-
-              {product.options.map((option,index) => (
-
-                <div
-                  key={index}
-                  className="variant-group"
-                >
-
-                  <div className="variant-group-top">
-
-                    <h4>
-                      {option.name}
-                    </h4>
-
-                    <span>
-                      {selectedOptions[option.name]}
-                    </span>
-
+              {/* LOTS */}
+              {product.lotRules?.enabled && product.lotRules?.lots?.length > 0 && (
+                <div className="product-lots-section">
+                  <div className="product-section-title">
+                    <h4>Achat en lot</h4>
+                    <p>
+                      {lotsLocked
+                        ? "Sélectionnez une option ci-dessus pour voir les lots disponibles"
+                        : "Réductions pour grandes quantités"}
+                    </p>
                   </div>
 
-                  <div className="variant-values">
-
-                    {option.values.map((value,index) => {
-
-                      const matchingVariant = product.variants.find((variant) => {
-
-                        // MUST HAVE STOCK
-                        if (variant.inventory <= 0) {
-                          return false;
-                        }
-
-                        // CHECK ALL CURRENT SELECTED OPTIONS
-                        return variant.options.every((variantOption) => {
-
-                          // CURRENT OPTION
-                          if (variantOption.name === option.name) {
-                            return (variantOption.value === value);
-                          }
-
-                          // OTHER OPTIONS
-                          return (selectedOptions[variantOption.name] === variantOption.value);
-
-                        });
-
-                      });
-
-                      const isOut = !matchingVariant;
-
-                      const isActive = selectedOptions[option.name] === value;
+                  <div className="product-lots-grid">
+                    {product.lotRules.lots.map((lot, index) => {
+                      const selected = selectedLot === index;
+                      const isDisabled =
+                        lotsLocked || (product.trackInventory && lot.quantity > activeInventory);
 
                       return (
-
                         <button
                           key={index}
                           type="button"
-                          disabled={isOut}
-                          className={`variant-btn ${isActive ? "active-variant" : ""} ${isOut? "disabled-variant": ""}`}
+                          disabled={isDisabled}
+                          className={`product-lot-card ${selected ? "active-lot" : ""} ${
+                            isDisabled ? "disabled-lot" : ""
+                          }`}
                           onClick={() => {
-
-                            setManualImage(false);
-
-                            setSelectedOptions((prev) => ({
-                              ...prev,
-                              [option.name]: value,
-                            }));
-
+                            setSelectedLot(index);
+                            setQuantity(lot.quantity);
                           }}
                         >
-
-                          {value}
-
+                          <div>
+                            <strong>{lot.quantity} pièces</strong>
+                            <span>{(lot.price / lot.quantity).toFixed(2)} TND / unité</span>
+                          </div>
+                          <h5>{lot.price} TND</h5>
                         </button>
-
                       );
-
                     })}
-
                   </div>
+                </div>
+              )}
+            </div>
+          </section>
 
+          {/* BUY BOX */}
+          <aside className="product-buybox-col">
+            <div className="buybox-wrapper">
+              <div className="buybox-card">
+                <div className="buybox-price">{totalPrice} TND</div>
+
+                <div className="stock-row">
+                  {!variantSelectionComplete ? (
+                    <span className="stock-select-hint">Sélectionnez une option pour voir la disponibilité</span>
+                  ) : activeInventory > 0 ? (
+                    <>
+                      <span className="stock-dot" />
+                      <span className="stock-text">
+                        {product.trackInventory ? "En stock" : "Disponible"}
+                      </span>
+                      {product.trackInventory && (
+                        <span className="stock-count">({activeInventory} disponibles)</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="stock-out">Rupture de stock</span>
+                  )}
                 </div>
 
-              ))}
-
-            </div>
-
-          )}
-
-          {/* LOTS */}
-          {product.lotRules?.enabled && product.lotRules?.lots?.length > 0 && (
-
-            <div className="product-lots-section">
-
-              <div className="product-section-title">
-
-                <h4>
-                  Achat en lot
-                </h4>
-
-                <p>
-                  Réductions pour grandes quantités
-                </p>
-
-              </div>
-
-              <div className="product-lots-grid">
-
-                {product.lotRules.lots.map((lot,index) => {
-
-                  const selected = selectedLot === index;
-
-                  const isDisabled = product.trackInventory && lot.quantity > activeInventory;
-
-                  return (
-
-                    <button
-                      key={index}
-                      type="button"
-                      disabled={isDisabled}
-                      className={`product-lot-card ${selected ? "active-lot" : ""} ${isDisabled ? "disabled-lot" : ""}`}
-                      onClick={() => {
-
-                        setSelectedLot(index);
-
-                        setQuantity(lot.quantity);
-
-                      }}
-                    >
-
-                      <div>
-
-                        <strong>
-                          {lot.quantity} pièces
-                        </strong>
-
-                        <span>
-
-                          {(lot.price / lot.quantity).toFixed(2)} TND / unité
-
-                        </span>
-
-                      </div>
-
-                      <h5>
-                        {lot.price} TND
-                      </h5>
-
+                <div className="quantity-section">
+                  <label>Quantité</label>
+                  <div className="quantity-box">
+                    <button onClick={decreaseQty} disabled={quantity <= 1} aria-label="Diminuer">
+                      <FiMinus />
                     </button>
+                    <span>{quantity}</span>
+                    <button
+                      onClick={increaseQty}
+                      disabled={product.trackInventory && quantity >= maxQuantity}
+                      aria-label="Augmenter"
+                    >
+                      <FiPlus />
+                    </button>
+                  </div>
+                </div>
 
-                  );
+                <div className="total-box">
+                  <span>Total</span>
+                  <h3>{totalPrice} TND</h3>
+                </div>
 
-                })}
+                <div className="product-details-actions">
+                  <button
+                    className="add-cart-btn"
+                    disabled={isOutOfStock || !variantSelectionComplete}
+                    onClick={handleAddToCart}
+                  >
+                    <FiShoppingCart />
+                    Ajouter au panier
+                  </button>
 
+                  <button
+                    className="buy-now-btn"
+                    disabled={ordering || isOutOfStock || !variantSelectionComplete}
+                    onClick={handleBuyNow}
+                  >
+                    <FiZap />
+                    {ordering ? "Chargement..." : "Acheter maintenant"}
+                  </button>
+
+                  {!variantSelectionComplete && (
+                    <p className="variant-required-note">
+                      <FiAlertCircle size={12} />
+                      Choisissez {product.options.map((o) => o.name).join(", ")} pour continuer
+                    </p>
+                  )}
+
+                  <div className="secondary-actions">
+                    <button className="secondary-btn">
+                      <FiHeart size={14} /> Favoris
+                    </button>
+                    <button className="secondary-btn">
+                      <FiShare2 size={14} /> Partager
+                    </button>
+                  </div>
+                </div>
+
+                <ul className="trust-list">
+                  <li>
+                    <FiTruck size={14} />
+                    Livraison rapide
+                  </li>
+                  <li>
+                    <FiShield size={14} />
+                    Produit vérifié
+                  </li>
+                </ul>
               </div>
-
             </div>
-
-          )}
-
-          {/* TRUST */}
-          <div className="product-trust-box">
-
-            <div>
-              <FiTruck />
-              Livraison rapide
-            </div>
-
-            <div>
-              <FiShield />
-              Produit vérifié
-            </div>
-
-          </div>
-
-          {/* INVENTORY */}
-          <div className="product-stock-box">
-
-            {activeInventory > 0 ? (
-
-              <span className="in-stock">
-
-                {product.trackInventory ? `${activeInventory} pièce${activeInventory > 1? "s": ""} disponible${activeInventory > 1? "s": ""}` : "Disponible"}
-
-              </span>
-
-            ) : (
-
-              <span className="out-stock">
-
-                Rupture de stock
-
-              </span>
-
-            )}
-
-          </div>
-
-          {/* QUANTITY */}
-          <div className="quantity-section">
-
-            <label>
-              Quantité
-            </label>
-
-            <div className="quantity-box">
-
-              <button
-                onClick={decreaseQty}
-                disabled={quantity <= 1}
-              >
-                <FiMinus />
-              </button>
-
-              <span>
-                {quantity}
-              </span>
-
-              <button
-                onClick={increaseQty}
-                disabled={product.trackInventory && quantity >= maxQuantity}
-              >
-                <FiPlus />
-              </button>
-
-            </div>
-
-          </div>
-
-          {/* TOTAL */}
-          <div className="total-box">
-
-            <span>
-              Total
-            </span>
-
-            <h3>
-              {totalPrice} TND
-            </h3>
-
-          </div>
-
-          {/* ACTIONS */}
-          <div className="product-actions">
-
-            <button
-              className="add-cart-btn"
-              disabled={product.trackInventory && activeInventory <= 0}
-              onClick={handleAddToCart}
-            >
-
-              <FiShoppingCart />
-
-              Ajouter au panier
-
-            </button>
-
-            <button
-              className="buy-now-btn"
-              disabled={ordering || (product.trackInventory && activeInventory <= 0)}
-              onClick={handleBuyNow}
-              disabled={ordering}
-            >
-
-              {ordering ? "Chargement..." : "Acheter maintenant"}
-
-            </button>
-
-          </div>
+          </aside>
 
         </div>
-
-      </div>
-
+      </main>
     </div>
   );
 }

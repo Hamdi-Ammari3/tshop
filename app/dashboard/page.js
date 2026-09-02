@@ -4,549 +4,320 @@ import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "../../context/StoreContext";
 import { useDashboard } from "../../context/DashboardContext";
-import { logoutUser } from "../../lib/auth";
 import { useRouter } from "next/navigation";
-import {FiBox,FiExternalLink,FiCopy,FiCheck,FiShoppingBag,FiDollarSign,FiPlus,FiPhone,FiLogOut,FiAlertCircle} from "react-icons/fi";
+import {
+    FiBox, FiExternalLink, FiCopy, FiCheck, FiShoppingBag,
+    FiDollarSign, FiPlus, FiPhone, FiLogOut, FiAlertCircle,
+    FiClock, FiTrendingUp, FiZap, FiArrowUpRight, FiUsers,
+    FiStar, FiLoader, FiChevronRight, FiGlobe,
+} from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
-import { ClipLoader } from "react-spinners";
-import {FiLoader} from "react-icons/fi";
 import "./dashboard.css";
 
-import {
-  collection,
-  getDocs,
-  writeBatch,
-} from "firebase/firestore";
-import { DB } from "../../lib/firebaseConfig";
+const STATUS_LABEL = {
+    "en-attente": "En attente",
+    confirmee:    "Confirmée",
+    expediee:     "Expédiée",
+    livree:       "Livrée",
+    annulee:      "Annulée",
+};
+
+const STATUS_CLASS = {
+    "en-attente": "ds-badge-amber",
+    confirmee:    "ds-badge-blue",
+    expediee:     "ds-badge-purple",
+    livree:       "ds-badge-green",
+    annulee:      "ds-badge-gray",
+};
+
+// Same mapping used on the orders dashboard page — derives the 5-state
+// display status from the real order.status / order.shippingStatus fields.
+function getDisplayStatus(order) {
+    if (order.status === "cancelled") return "annulee";
+    if (order.status === "pending") return "en-attente";
+    if (order.shippingStatus === "livree") return "livree";
+    if (order.shippingStatus === "expediee") return "expediee";
+    return "confirmee";
+}
+
+function orderCreatedAtMs(order) {
+    if (!order?.createdAt) return 0;
+    return order.createdAt?.toDate ? order.createdAt.toDate().getTime() : new Date(order.createdAt).getTime();
+}
+
+function orderItemsSummary(order) {
+    const items = order.items || [];
+    if (items.length === 0) return "Commande";
+    if (items.length === 1) {
+        return `${items[0].quantity}× ${items[0].productName}`;
+    }
+    return `${items[0].quantity}× ${items[0].productName} +${items.length - 1} autre${items.length - 1 > 1 ? "s" : ""}`;
+}
 
 export default function DashboardHome() {
 
-  const {store,loading: storeLoading} = useStore();
-  const {products,orders,loading,pendingOrders,completedOrders,revenue} = useDashboard();
+    const { store, loading: storeLoading } = useStore();
+    const { products, orders, loading, pendingOrders, completedOrders, revenue } = useDashboard();
+    const router = useRouter();
 
-  const router = useRouter();
+    const [copied, setCopied]           = useState(false);
+    const [logoutLoading, setLogoutLoading] = useState(false);
 
-  const [copied, setCopied] = useState(false);
-  const [logoutLoading, setLogoutLoading] = useState(false);
+    const handleLogout = async () => {
+        try { setLogoutLoading(true); router.replace("/"); }
+        catch (err) { console.error(err); }
+        finally { setLogoutLoading(false); }
+    };
 
-  /* LOGOUT */
-  const handleLogout = async () => {
-
-    try {
-
-      setLogoutLoading(true);
-
-      await logoutUser();
-
-      router.replace("/");
-
-    } catch (error) {
-
-      console.log(error);
-
-    } finally {
-
-      setLogoutLoading(false);
-
+    /* ── Loading ── */
+    if (storeLoading || loading) {
+        return (
+            <div className="ds-loading-screen">
+                <div className="ds-loading-card">
+                    <FiLoader className="spin-icon" size={28} />
+                    <h3>Chargement du tableau de bord...</h3>
+                    <p>Préparation de votre boutique</p>
+                </div>
+            </div>
+        );
     }
-  };
 
-  /* LOADING */
-  if (storeLoading || loading) {
+    /* ── No store ── */
+    if (!store) {
+        return (
+            <div className="ds-empty-page">
+                <div className="ds-empty-icon-lg"><FiShoppingBag /></div>
+                <h2>Aucune boutique trouvée</h2>
+                <p>Créez votre boutique pour commencer à vendre en ligne.</p>
+                <button className="ds-logout-btn" onClick={handleLogout} disabled={logoutLoading}>
+                    <FiLogOut />
+                    {logoutLoading ? "Déconnexion..." : "Déconnexion"}
+                </button>
+            </div>
+        );
+    }
+
+    /* ── Store URL ── */
+    const isLocal  = typeof window !== "undefined" && window.location.hostname === "localhost";
+    const storeUrl = isLocal
+        ? `/store/${store.slug}`
+        : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
+    const storeDomain = `${store.slug}.tunishop.com`;
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(
+                isLocal ? `${window.location.origin}/store/${store.slug}` : `https://${storeDomain}`
+            );
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch (err) { console.error(err); }
+    };
+
+    /* ── Quota ── */
+    const ordersQuota = Number(store?.ordersQuota ?? 20);
+    const ordersUsed  = Array.isArray(orders) ? orders.length : 0;
+    const ordersLeft  = Math.max(0, ordersQuota - ordersUsed);
+    const quotaPct    = Math.min(100, (ordersLeft / ordersQuota) * 100);
+    const quotaClass  = ordersLeft <= 3 ? "danger" : ordersLeft <= 8 ? "warning" : "safe";
+
+    /* ── Stats ── */
+    const shippingOrders = (orders || []).filter(
+        (o) => getDisplayStatus(o) === "confirmee" || getDisplayStatus(o) === "expediee"
+    ).length;
+
+    const stats = [
+        { icon: FiBox,       label: "Produits actifs",    value: products.length,          hint: products.length > 0 ? "Produits en ligne" : "Aucun produit", tint: "ds-tint-blue"  },
+        { icon: FiCheck,     label: "Commandes livrées",  value: completedOrders.length,   hint: "Toutes catégories",                                          tint: "ds-tint-green" },
+        { icon: FiClock,     label: "En attente",         value: pendingOrders.length,     hint: pendingOrders.length > 0 ? "À traiter" : "Aucune commande",   tint: "ds-tint-amber" },
+        { icon: FiDollarSign,label: "Revenu total",       value: `${new Intl.NumberFormat("fr-TN",{minimumFractionDigits:3,maximumFractionDigits:3}).format(revenue)} TND`, hint: `${shippingOrders} en cours`, tint: "ds-tint-navy" },
+    ];
+
+    const recentOrders = [...(orders || [])]
+        .sort((a, b) => orderCreatedAtMs(b) - orderCreatedAtMs(a))
+        .slice(0, 5);
+
+    const topProducts = [...(products || [])]
+        .sort((a, b) => Number(b.stats?.ordersCount || 0) - Number(a.stats?.ordersCount || 0))
+        .slice(0, 4);
 
     return (
-      <div className="dashboard-loading-screen">
+        <div className="ds-home">
 
-        <div className="dashboard-loading-card">
-
-          <FiLoader className="spin-icon" />
-
-          <h3>
-            Chargement du tableau de bord...
-          </h3>
-
-          <p>
-            Préparation de votre boutique
-          </p>
-
-        </div>
-
-      </div>
-    );
-  }
-
-  /* NO STORE */
-  if (!store) {
-
-    return (
-      <div className="dashboard-empty-page">
-
-        <div className="dashboard-empty-icon">
-          <FiShoppingBag />
-        </div>
-
-        <h2>
-          Aucune boutique trouvée
-        </h2>
-
-        <p>
-          Créez votre boutique pour commencer à vendre en ligne.
-        </p>
-
-        <button
-          className="dashboard-logout-btn"
-          onClick={handleLogout}
-          disabled={logoutLoading}
-        >
-
-          <FiLogOut />
-
-          <span>
-            {logoutLoading
-              ? "Déconnexion..."
-              : "Déconnexion"}
-          </span>
-
-        </button>
-
-      </div>
-    );
-  }
-
-  //ORDER QUOTA
-  const ordersQuota = Number(store?.ordersQuota ?? 100);
-
-  const ordersLeft = Math.max(0,ordersQuota - (Array.isArray(orders) ? orders.length : 0));
-
-  let quotaClass = "safe";
-
-  if (ordersLeft <= 10) {
-    quotaClass = "danger";
-  } else if (ordersLeft <= 30) {
-    quotaClass = "warning";
-  }
-
-  const quotaPercentage = Math.min(100,(ordersLeft / ordersQuota) * 100);
-
-  // STATS
-  const stats = [
-    {
-      icon: FiBox,
-      label: "Produits",
-      value: products.length,
-      hint: products.length > 0 ? "Produits en ligne" : "Aucun produit",
-    },
-
-    {
-      icon: FiShoppingBag,
-      label: "Commandes",
-      value: orders.length,
-      hint: pendingOrders.length > 0 ? `${pendingOrders.length} en attente` : "Aucune commande en attente",
-    },
-
-    {
-    icon: FiDollarSign,
-        label: "Revenus",
-        value: `${new Intl.NumberFormat("fr-TN", {minimumFractionDigits: 3,maximumFractionDigits: 3}).format(revenue)} TND`,
-        hint: `${completedOrders.length} commandes terminées`,
-    },
-  ];
-
-  const isLocalhost = typeof window !== "undefined" && window.location.hostname === "localhost";
-  const storeUrl = isLocalhost ? `/store/${store.slug}` : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
-  const copyStoreUrl = isLocalhost ? `${window.location.origin}/store/${store.slug}` : `https://${store.slug}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`;
-
-  /* COPY */
-  const copyStoreLinkk = async () => {
-    try {
-      await navigator.clipboard.writeText(copyStoreUrl);
-      setCopied(true);
-      setTimeout(() => {
-        setCopied(false);
-      }, 1500);
-
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const copyStoreLink = async () => {
-
-    try {
-
-      const snapshot = await getDocs(
-        collection(DB, "stores")
-      );
-
-      const batch = writeBatch(DB);
-
-      snapshot.forEach((docSnap) => {
-
-  const data = docSnap.data();
-
-  if (data.ordersQuota === undefined) {
-
-    batch.update(docSnap.ref, {
-      ordersQuota: 100,
-    });
-
-  }
-
-});
-
-      await batch.commit();
-
-      console.log(`${snapshot.size} stores updated successfully.`)
-
-    } catch (error) {
-
-      console.error(error);
-
-    } finally {
-
-      console.error('done');
-
-    }
-
-  }
-
-  return (
-    <div className="dashboard-home">
-
-      {/* TOP */}
-      <div className="dashboard-home-top">
-
-        <div>
-
-          <h1>
-            {store.name}
-          </h1>
-
-          <p className="dashboard-subtitle">
-            Gérez votre boutique et
-            suivez vos ventes
-          </p>
-
-          <div className="subscription-inline">
-
-            <div className={`subscription-pill ${quotaClass}`}>
-              Quota commandes
+            {/* ── PAGE HEADER ── */}
+            <div className="ds-page-header">
+                <div className="ds-page-header-left">
+                    <h1>Bonjour, {store.name} 👋</h1>
+                    <p>Voici un aperçu de votre activité aujourd'hui</p>
+                </div>
+                <div className="ds-page-header-right">
+                    {/* Store URL pill */}
+                    <div className="ds-store-url-pill">
+                        <FiGlobe size={13} />
+                        <span>{storeDomain}</span>
+                        <button
+                            className={`ds-url-copy ${copied ? "ds-url-copied" : ""}`}
+                            onClick={handleCopy}
+                            title="Copier le lien"
+                        >
+                            {copied ? <FiCheck size={13} /> : <FiCopy size={13} />}
+                        </button>
+                        <Link
+                            href={storeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ds-url-open"
+                            title="Ouvrir la boutique"
+                        >
+                            <FiExternalLink size={13} />
+                        </Link>
+                    </div>
+                </div>
             </div>
 
-            <div className="subscription-inline-progress">
-
-              <div
-                className={`subscription-inline-fill ${quotaClass}`}
-                style={{width: `${quotaPercentage}%`,}}
-              />
-
+            {/* ── QUOTA BANNER ── */}
+            <div className="ds-quota-banner">
+                <div className="ds-quota-left">
+                    <div className="ds-quota-pill">
+                        <FiZap size={11} /> Quota commandes
+                    </div>
+                    <p className="ds-quota-number">
+                        {ordersLeft}
+                        <span className="ds-quota-label"> commandes restantes</span>
+                    </p>
+                    <p className="ds-quota-hint">
+                        Chaque commande reçue consomme 1 unité de votre quota gratuit.
+                    </p>
+                </div>
+                <div className="ds-quota-right">
+                    <div className="ds-quota-bar-wrap">
+                        <div className={`ds-quota-bar-fill quota-${quotaClass}`} style={{ width: `${quotaPct}%` }} />
+                    </div>
+                </div>
             </div>
 
-            <div className="subscription-inline-days">
-              {ordersLeft} restantes
+            {/* ── STATS ── */}
+            <div className="ds-stats-grid">
+                {stats.map((s, i) => {
+                    const Icon = s.icon;
+                    return (
+                        <div key={i} className="ds-stat-card">
+                            <div className="ds-stat-top">
+                                <p className="ds-stat-label">{s.label}</p>
+                                <div className={`ds-stat-icon ${s.tint}`}><Icon size={18} /></div>
+                            </div>
+                            <h3 className="ds-stat-value">{s.value}</h3>
+                            <span className="ds-stat-hint">{s.hint}</span>
+                        </div>
+                    );
+                })}
             </div>
 
-          </div>
+            {/* ── EMPTY PRODUCTS PROMPT ── */}
+            {products.length === 0 && (
+                <div className="ds-empty-box">
+                    <div className="ds-empty-box-left">
+                        <div className="ds-empty-box-icon"><FiAlertCircle size={22} /></div>
+                        <div>
+                            <h3>Ajoutez votre premier produit</h3>
+                            <p>Votre boutique est prête. Commencez à vendre en ajoutant vos produits.</p>
+                        </div>
+                    </div>
+                    <Link href="/dashboard/products/new" className="ds-add-btn">
+                        <FiPlus size={15} /> Ajouter un produit
+                    </Link>
+                </div>
+            )}
 
-        </div>
+            {/* ── PENDING BANNER ── */}
+            {pendingOrders.length > 0 && (
+                <Link href="/dashboard/orders" className="ds-pending-banner">
+                    <div className="ds-pending-left">
+                        <div className="ds-pending-icon"><FiShoppingBag size={18} /></div>
+                        <div>
+                            <h4>{pendingOrders.length} commande{pendingOrders.length > 1 ? "s" : ""} en attente</h4>
+                            <p>Consultez et gérez vos nouvelles commandes</p>
+                        </div>
+                    </div>
+                    <span className="ds-pending-cta">Voir <FiChevronRight size={14} /></span>
+                </Link>
+            )}
 
-        {/* LINKS */}
-        <div className="store-link-container">
+            {/* ── TWO-COL ── */}
+            <div className="ds-two-col">
 
-          <div className="store-link-box">
+                <div className="ds-card">
+                    <div className="ds-card-head">
+                        <div>
+                            <h2>Commandes récentes</h2>
+                            <p>Les 5 dernières commandes reçues</p>
+                        </div>
+                        <Link href="/dashboard/orders" className="ds-card-link">
+                            Voir tout <FiArrowUpRight size={12} />
+                        </Link>
+                    </div>
+                    <div className="ds-order-list">
+                        {recentOrders.length === 0 ? (
+                            <p className="ds-empty-msg">Aucune commande pour le moment.</p>
+                        ) : recentOrders.map((o) => {
+                            const status = getDisplayStatus(o);
+                            const location = o.delegation && o.governorate
+                                ? `${o.delegation}, ${o.governorate}`
+                                : o.fullAddress || o.clientAddress || "";
 
-            <span className="store-domain">
-              {store.slug}.tunyshop.com
-            </span>
-
-            <button
-              className={`copy-btn ${
-                copied ? "copied" : ""
-              }`}
-              onClick={copyStoreLink}
-            >
-
-              {copied ? (
-                <FiCheck size={24}/>
-              ) : (
-                <FiCopy size={24}/>
-              )}
-
-            </button>
-
-          </div>
-
-          <div className="store-link-box">
-            <button className="copy-btn">
-              {store.hasWhatsapp ? (
-                <FaWhatsapp size={22}/>
-              ) : (
-                <FiPhone size={22}/>
-              )}
-            </button>
-
-            <span className="store-domain">
-              +216 {store.phone}
-            </span>
-
-          </div>
-
-        </div>
-
-      </div>
-
-      {/* STATS */}
-      <div className="stats-grid">
-
-        {stats.map((item, index) => {
-
-          const Icon = item.icon;
-
-          return (
-            <div key={index} className="stat-card">
-              <div className="stat-top">
-
-                <p>
-                  {item.label}
-                </p>
-
-                <div className="stat-icon">
-                  <Icon />
+                            return (
+                                <div key={o.id} className="ds-order-row">
+                                    <div className="ds-order-avatar"><FiShoppingBag size={16} /></div>
+                                    <div className="ds-order-info">
+                                        <p className="ds-order-name">{orderItemsSummary(o)}</p>
+                                        <p className="ds-order-meta">
+                                            {o.clientName || "Client"}
+                                            {location ? ` · ${location}` : ""}
+                                        </p>
+                                    </div>
+                                    <div className="ds-order-right">
+                                        <p className="ds-order-price">{o.total_amount ?? o.subtotal ?? 0} TND</p>
+                                        <span className={`ds-badge ${STATUS_CLASS[status] || "ds-badge-gray"}`}>
+                                            {STATUS_LABEL[status] || status}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
 
-              </div>
-
-              <h3>
-                {item.value}
-              </h3>
-
-              <span>
-                {item.hint}
-              </span>
-
-            </div>
-          );
-        })}
-
-      </div>
-
-      {/* EMPTY PRODUCTS */}
-      {products.length === 0 && (
-
-        <div className="dashboard-empty-box">
-
-          <div className="dashboard-empty-content">
-
-            <div className="dashboard-empty-icon-small">
-              <FiAlertCircle />
-            </div>
-
-            <div>
-
-              <h3>
-                Ajoutez votre premier produit
-              </h3>
-
-              <p>
-                Votre boutique est prête.
-                Commencez maintenant à vendre
-                en ajoutant vos produits.
-              </p>
+                <div className="ds-card">
+                    <div className="ds-card-head">
+                        <div>
+                            <h2>Top produits</h2>
+                            <p>Par ventes</p>
+                        </div>
+                        <Link href="/dashboard/products" className="ds-card-link">
+                            Gérer <FiArrowUpRight size={12} />
+                        </Link>
+                    </div>
+                    <div className="ds-product-list">
+                        {topProducts.length === 0 ? (
+                            <p className="ds-empty-msg">Aucun produit pour le moment.</p>
+                        ) : topProducts.map((p, i) => (
+                            <div key={p.id} className="ds-product-row">
+                                <span className="ds-product-rank">{i + 1}</span>
+                                <div className="ds-product-info">
+                                    <p className="ds-product-name">{p.name}</p>
+                                    <p className="ds-product-meta">{p.price} TND · {p.inventory ?? p.stock ?? 0} en stock</p>
+                                </div>
+                                <div className="ds-product-sales">
+                                    <FiTrendingUp size={12} className="ds-trend-icon" />
+                                    {Number(p.stats?.ordersCount || 0)}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
             </div>
-
-          </div>
-
-          <Link
-            href="/dashboard/products/new"
-            className="empty-action-btn"
-          >
-
-            <FiPlus />
-
-            Ajouter un produit
-
-          </Link>
 
         </div>
-      )}
-
-      {/* PENDING */}
-      {pendingOrders.length > 0 && (
-
-        <Link
-          href="/dashboard/orders"
-          className="pending-orders-box"
-        >
-
-          <div className="pending-left">
-
-            <div className="pending-icon">
-              <FiShoppingBag />
-            </div>
-
-            <div>
-
-              <h4>
-                {pendingOrders.length}
-                {" "}
-                commande
-                {pendingOrders.length > 1
-                  ? "s"
-                  : ""}
-                {" "}
-                en attente
-              </h4>
-
-              <p>
-                Consultez et gérez vos
-                nouvelles commandes
-              </p>
-
-            </div>
-
-          </div>
-
-          <button>
-            Voir
-          </button>
-
-        </Link>
-      )}
-
-      {/* STORE PREVIEW */}
-<div className="store-preview">
-
-  {/* BACKGROUND */}
-  <div className="store-preview-background"></div>
-
-  <div className="store-preview-content">
-
-    {/* TOP */}
-    <div className="store-preview-top">
-
-      <div className="store-preview-left">
-
-        {/* LOGO */}
-        <div className="store-preview-logo">
-
-          {store.logo ? (
-
-            <img
-              src={store.logo}
-              alt="logo boutique"
-            />
-
-          ) : (
-
-            <span>
-              {store.name?.[0]}
-            </span>
-
-          )}
-
-        </div>
-
-        {/* INFO */}
-        <div className="store-preview-info">
-
-          <div className="store-preview-badge">
-            Boutique active
-          </div>
-
-          <h2>
-            {store.name}
-          </h2>
-
-          <p>
-            Votre boutique en ligne professionnelle
-          </p>
-
-        </div>
-
-      </div>
-
-      {/* BUTTON */}
-      <Link
-        href={storeUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="preview-btn"
-      >
-
-        <FiExternalLink size={20}/>
-
-        Voir la boutique
-
-      </Link>
-
-    </div>
-
-    {/* META */}
-    <div className="store-preview-meta">
-
-      <div className="preview-meta-item">
-
-        {store.hasWhatsapp ? (
-          <FaWhatsapp />
-        ) : (
-          <FiPhone />
-        )}
-
-        <span>
-          +216 {store.phone}
-        </span>
-
-      </div>
-
-      <div className="preview-meta-item">
-
-        <FiBox />
-
-        <span>
-          {products.length} produit
-          {products.length > 1
-            ? "s"
-            : ""}
-        </span>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
-
-    </div>
-  );
+    );
 }
-
-/*
-<div className="subscription-inline">
-
-            <div className={`subscription-pill ${subscriptionClass}`} >
-
-              {store.subscription?.plan === "free"
-                ? "Essai gratuit"
-                : store.subscription?.plan}
-
-            </div>
-
-            <div className="subscription-inline-progress">
-
-              <div
-                className={`subscription-inline-fill ${subscriptionClass}`}
-                style={{
-                  width: `${progress}%`,
-                }}
-              />
-
-            </div>
-
-            <div className="subscription-inline-days">
-              {daysLeft} jours
-            </div>
-
-          </div>
-*/

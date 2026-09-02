@@ -1,0 +1,492 @@
+/* ===========================================
+   HERO SLIDER
+=========================================== */
+
+.hero-slider{
+    margin:10px auto 10px;
+    padding:0 16px;
+}
+
+.hero-slider-wrapper{
+
+    position:relative;
+
+    overflow:hidden;
+
+    border-radius:28px;
+
+    background:#0f172a;
+
+    box-shadow:
+    0 25px 60px rgba(15,23,42,.12);
+
+}
+
+/* ===========================================
+   TRACK
+=========================================== */
+
+.hero-slider-track{
+
+    display:flex;
+
+    transition:transform .75s cubic-bezier(.22,.61,.36,1);
+
+}
+
+/* ===========================================
+   SLIDE
+=========================================== */
+
+.hero-slide{
+
+    position:relative;
+
+    min-width:100%;
+
+    aspect-ratio:16/6;
+
+    overflow:hidden;
+
+}
+
+.hero-slide-image{
+
+    position:absolute;
+
+    inset:0;
+
+    width:100%;
+    height:100%;
+
+    object-fit:cover;
+
+    user-select:none;
+
+    pointer-events:none;
+
+}
+
+/* ===========================================
+   OVERLAY
+=========================================== */
+
+.hero-slide.left .hero-overlay{
+
+    position:absolute;
+    inset:0;
+
+    background:
+    linear-gradient(
+        90deg,
+        rgba(0,0,0,.72) 0%,
+        rgba(0,0,0,.38) 45%,
+        rgba(0,0,0,0) 100%
+    );
+
+}
+
+.hero-slide.right .hero-overlay{
+
+    position:absolute;
+    inset:0;
+
+    background:
+    linear-gradient(
+        270deg,
+        rgba(0,0,0,.72) 0%,
+        rgba(0,0,0,.38) 45%,
+        rgba(0,0,0,0) 100%
+    );
+
+}
+
+/* ===========================================
+   CONTENT
+=========================================== */
+
+.hero-content{
+
+    position:relative;
+
+    z-index:5;
+
+    display:flex;
+
+    align-items:center;
+
+    height:100%;
+
+    padding:0 70px;
+
+}
+
+.hero-slide.left .hero-content{
+
+    justify-content:flex-start;
+
+}
+
+.hero-slide.right .hero-content{
+
+    justify-content:flex-end;
+
+}
+
+.hero-text{
+
+    max-width:560px;
+
+    color:white;
+
+}
+
+.hero-slide.right .hero-text{
+
+    text-align:right;
+
+}
+
+/* ===========================================
+   BADGE
+=========================================== */
+
+.hero-badge{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    padding:8px 18px;
+
+    border-radius:999px;
+
+    background:#006de2;
+
+    color:white;
+
+    font-size:13px;
+
+    font-weight:700;
+
+    letter-spacing:.4px;
+
+    box-shadow:
+    0 12px 28px rgba(0,109,226,.35);
+
+}
+
+/* ===========================================
+   TITLE
+=========================================== */
+
+.hero-text h2{
+
+    margin:18px 0 16px;
+
+    font-size:48px;
+
+    font-weight:800;
+
+    line-height:1.08;
+
+    letter-spacing:-1px;
+
+}
+
+/* ===========================================
+   DESCRIPTION
+=========================================== */
+
+.hero-text p{
+
+    font-size:17px;
+
+    line-height:1.75;
+
+    color:rgba(255,255,255,.9);
+
+    margin-bottom:34px;
+
+}
+
+/* ===========================================
+   BUTTON
+=========================================== */
+
+.hero-button{
+
+    display:inline-flex;
+
+    align-items:center;
+
+    justify-content:center;
+
+    height:50px;
+
+    padding:0 28px;
+
+    border-radius:999px;
+
+    text-decoration:none;
+
+    background:#006de2;
+
+    color:white;
+
+    font-size:15px;
+
+    font-weight:700;
+
+    transition:.25s;
+
+    box-shadow:
+    0 18px 40px rgba(0,109,226,.32);
+
+}
+
+.hero-button:hover{
+
+    transform:translateY(-3px);
+
+    background:#0056b4;
+
+}
+
+/* ===========================================
+   ARROWS
+=========================================== */
+
+.hero-arrow{
+
+    position:absolute;
+
+    top:50%;
+
+    transform:translateY(-50%);
+
+    width:48px;
+    height:48px;
+
+    border:none;
+
+    border-radius:50%;
+
+    background:rgba(255,255,255,.92);
+
+    color:#111827;
+
+    cursor:pointer;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    transition:.25s;
+
+    z-index:10;
+
+    box-shadow:
+    0 10px 28px rgba(0,0,0,.16);
+
+}
+
+.hero-arrow svg{
+
+    font-size:24px;
+
+}
+
+.hero-arrow:hover{
+
+    transform:
+    translateY(-50%)
+    scale(1.08);
+
+}
+
+.hero-left{
+
+    left:22px;
+
+}
+
+.hero-right{
+
+    right:22px;
+
+}
+
+/* ===========================================
+   DOTS
+=========================================== */
+
+.hero-dots{
+
+    position:absolute;
+
+    left:50%;
+
+    bottom:24px;
+
+    transform:translateX(-50%);
+
+    display:flex;
+
+    gap:10px;
+
+    z-index:20;
+
+}
+
+.hero-dot{
+
+    width:10px;
+    height:10px;
+
+    border:none;
+
+    border-radius:999px;
+
+    cursor:pointer;
+
+    background:rgba(255,255,255,.55);
+
+    transition:.35s;
+
+}
+
+.hero-dot.active{
+
+    width:34px;
+
+    background:#006de2;
+
+}
+
+/* ===========================================
+   TABLET
+=========================================== */
+
+@media(max-width:900px){
+
+.hero-slide{
+
+    aspect-ratio:16/9;
+
+}
+
+.hero-content{
+
+    padding:40px;
+
+}
+
+.hero-text{
+
+    max-width:420px;
+
+}
+
+.hero-text h2{
+
+    font-size:34px;
+
+}
+
+.hero-text p{
+
+    font-size:15px;
+
+}
+
+.hero-arrow{
+
+    width:42px;
+    height:42px;
+
+}
+
+}
+
+/* ===========================================
+   MOBILE
+=========================================== */
+
+@media(max-width:640px){
+
+.hero-slider{
+
+    margin-top:16px;
+
+    padding:0 10px;
+
+}
+
+.hero-slider-wrapper{
+
+    border-radius:22px;
+
+}
+
+.hero-slide{
+
+    aspect-ratio:1/1;
+
+}
+
+.hero-content{
+
+    justify-content:flex-start !important;
+
+    align-items:flex-end;
+
+    padding:26px;
+
+}
+
+.hero-text{
+
+    max-width:100%;
+
+    text-align:left !important;
+
+}
+
+.hero-text h2{
+
+    font-size:28px;
+
+    margin:14px 0;
+
+}
+
+.hero-text p{
+
+    font-size:14px;
+
+    margin-bottom:24px;
+
+}
+
+.hero-button{
+
+    height:46px;
+
+    padding:0 22px;
+
+}
+
+.hero-arrow{
+
+    display:none;
+
+}
+
+.hero-dots{
+
+    bottom:18px;
+
+}
+
+}

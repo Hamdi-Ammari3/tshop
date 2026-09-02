@@ -87,33 +87,6 @@ export default function CategoryPage() {
 
     return (
         <main className="marketplace">
-
-            <section className="category-header">
-
-                <Link
-                    className="back-btn"
-                    href="/"
-                >
-                    <FiArrowLeft />
-                    Retour
-                </Link>
-
-            </section>
-
-            {products.length > 0 && (
-                <section className="search-section">
-
-                <div className="search-box">
-
-                    <input
-                        type="text"
-                        placeholder="Rechercher..."
-                    />
-
-                </div>
-
-                </section>
-            )}  
             
             {products.length === 0 ? (
 
@@ -150,6 +123,7 @@ export default function CategoryPage() {
 
                 <ProductSection
                     title={`${category?.label}`}
+                    showTitle={true}
                     products={products}
                     showMore={hasMore}
                     onShowMore={handleLoadMore}

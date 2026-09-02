@@ -33,7 +33,7 @@ export default function LayoutWrapper({children}) {
 
   /* PREVENT HYDRATION MISMATCH */
   if (!mounted) {
-    return children;
+    return <main className="app-main">{children}</main>;
   }
 
   return (
@@ -43,7 +43,9 @@ export default function LayoutWrapper({children}) {
         <Navbar />
       )}
 
-      {children}
+      <main className="app-main">
+        {children}
+      </main>
 
       {!hideLayout && (
         <Footer />
