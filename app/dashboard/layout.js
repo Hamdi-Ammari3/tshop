@@ -19,7 +19,7 @@ const NAV_ITEMS = [
     { href: "/dashboard",          label: "Ma Boutique", icon: FiGrid        },
     { href: "/dashboard/products", label: "Produits",    icon: FiBox         },
     { href: "/dashboard/orders",   label: "Commandes",   icon: FiShoppingCart},
-    { href: "/dashboard/shipping", label: "Livraison",   icon: FiTruck       },
+    //{ href: "/dashboard/shipping", label: "Livraison",   icon: FiTruck       },
     { href: "/dashboard/settings", label: "Paramètres",  icon: FiSettings    },
 ];
 

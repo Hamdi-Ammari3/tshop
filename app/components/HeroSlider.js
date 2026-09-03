@@ -1,16 +1,16 @@
 "use client";
 
-import {useEffect,useState} from "react";
+import {useEffect,useState,useRef} from "react";
 import Link from "next/link";
 import {FiChevronLeft,FiChevronRight} from "react-icons/fi";
-
 import {slides} from "../../data/slides";
-
 import "./HeroSlider.css";
 
 export default function HeroSlider() {
 
     const [index,setIndex] = useState(0);
+    const touchStartX = useRef(null);
+    const touchDeltaX = useRef(0);
 
     useEffect(() => {
 
@@ -46,6 +46,34 @@ export default function HeroSlider() {
 
     }
 
+    // SWIPE HANDLERS
+    function handleTouchStart(e){
+        touchStartX.current = e.touches[0].clientX;
+        touchDeltaX.current = 0;
+    }
+
+    function handleTouchMove(e){
+        if (touchStartX.current === null) return;
+        touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+    }
+
+    function handleTouchEnd(){
+        if (touchStartX.current === null) return;
+
+        const SWIPE_THRESHOLD = 50;
+
+        if (touchDeltaX.current > SWIPE_THRESHOLD) {
+            // swiped right → previous slide
+            goToSlide(index - 1);
+        } else if (touchDeltaX.current < -SWIPE_THRESHOLD) {
+            // swiped left → next slide
+            goToSlide(index + 1);
+        }
+
+        touchStartX.current = null;
+        touchDeltaX.current = 0;
+    }
+
     return (
 
         <section className="hero-slider">
@@ -57,6 +85,9 @@ export default function HeroSlider() {
                     style={{
                         transform:`translateX(-${index * 100}%)`
                     }}
+                    onTouchStart={handleTouchStart}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                 >
 
                     {slides.map((slide,i) => (
@@ -97,6 +128,7 @@ export default function HeroSlider() {
 
                                     </p>
 
+                                    {/* 
                                     <Link
                                         href={slide.link}
                                         className="hero-button"
@@ -105,6 +137,7 @@ export default function HeroSlider() {
                                         {slide.button}
 
                                     </Link>
+                                    */}
 
                                 </div>
 

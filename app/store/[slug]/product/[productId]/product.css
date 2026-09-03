@@ -488,8 +488,13 @@
 
 @media (max-width: 768px) {
   .product-page { padding: 18px 12px 40px; }
+  .product-title {font-size: 15px;}
+  .price-current {font-size: 15px;}
+  .price-old {font-size: 13px;padding-bottom: 0px;}
+  .price-discount-chip {padding: 0px 6px;margin-bottom: 0px;}
   .breadcrumb-nav { padding: 10px 0px; }
   .product-main { padding: 10px 0px; }
   .details-card { padding: 10px; }
   .buybox-card { padding: 16px 10px; }
+  .buybox-price,.total-box h3 {font-size: 15px;}
 }

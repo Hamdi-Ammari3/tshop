@@ -639,3 +639,8 @@
     display: flex;
 }
 .or-toast button:hover { color: var(--or-secondary); }
+
+@media (max-width: 768px) {
+    .or-tabs { padding: 10px 4px; }
+    .or-row-total { font-size: 15px; }
+}

@@ -32,6 +32,8 @@
 
     transition:transform .75s cubic-bezier(.22,.61,.36,1);
 
+    touch-action: pan-y;
+
 }
 
 /* ===========================================
@@ -417,7 +419,7 @@
 
 .hero-slider{
 
-    margin-top:10px;
+    margin-top:0px;
 
     padding:0px;
 

@@ -383,8 +383,15 @@
 .ck-btn-primary-full:hover { background: var(--ck-primary-hover); }
 
 @media (max-width: 768px) {
-    .ck-page { padding: 20px 10px; }
+    .ck-page { padding: 10px 0px; }
     .ck-breadcrumb { padding: 10px; gap: 8px; font-size: 14px; }
     .ck-title-row { margin: 5px 0px 15px; padding: 0px 10px; }
+    .ck-title { font-size: 15px;}
     .ck-layout { padding: 0px 10px; }
+    .ck-card,.ck-summary-header,.ck-summary-item,.ck-summary-rows,.ck-summary-total{
+        padding: 14px 5px;
+    }
+    .ck-summary-total h2{
+        font-size: 15px;
+    }
 }

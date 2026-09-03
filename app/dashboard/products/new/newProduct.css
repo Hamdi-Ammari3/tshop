@@ -27,13 +27,13 @@
     width: fit-content;
 }
 
-.np-back:hover { color: #111827; }
+.np-back:hover { color: #000; }
 
 .np-header h1 {
     margin: 0 0 4px;
     font-size: 22px;
     font-weight: 800;
-    color: #111827;
+    color: #000;
     letter-spacing: -0.3px;
 }
 
@@ -91,7 +91,7 @@
     margin: 0 0 2px;
     font-size: 14px;
     font-weight: 700;
-    color: #111827;
+    color: #000;
 }
 
 .np-card-head p {
@@ -139,7 +139,7 @@
     padding: 0 14px;
     height: 44px;
     font-size: 14px;
-    color: #111827;
+    color: #000;
     background: #fff;
     outline: none;
     font-family: inherit;
@@ -224,7 +224,7 @@
 }
 
 .np-toggle-info { display: flex; align-items: center; gap: 10px; }
-.np-toggle-title { font-size: 13px; font-weight: 700; color: #111827; margin: 0 0 2px; }
+.np-toggle-title { font-size: 13px; font-weight: 700; color: #000; margin: 0 0 2px; }
 .np-toggle-sub   { font-size: 12px; color: #6b7280; margin: 0; }
 
 .np-switch-wrap {
@@ -490,7 +490,7 @@
     border-radius: 10px;
     padding: 0 12px;
     font-size: 13px;
-    color: #111827;
+    color: #000;
     outline: none;
     font-family: inherit;
     transition: border-color 0.2s, box-shadow 0.2s;
@@ -562,7 +562,7 @@
     gap: 12px;
 }
 
-.np-combos-head h4 { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #111827; }
+.np-combos-head h4 { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #000; }
 .np-combos-head p  { margin: 0; font-size: 12px; color: #9ca3af; }
 
 .np-combos-count {
@@ -658,7 +658,7 @@
 
 .np-combo-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-.np-combo-label { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: #111827; }
+.np-combo-label { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: #000; }
 .np-combo-sub   { margin: 0; font-size: 11px; color: #9ca3af; }
 
 /* COMBO CONTENT */
@@ -714,7 +714,7 @@
 }
 
 .np-combo-discount-left { display: flex; align-items: center; gap: 8px; }
-.np-combo-discount-title { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: #111827; }
+.np-combo-discount-title { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: #000; }
 .np-combo-discount-sub   { margin: 0; font-size: 11px; color: #9ca3af; }
 
 .np-rotate { transform: rotate(180deg); }
@@ -746,7 +746,7 @@
     gap: 12px;
 }
 
-.np-lot-title { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #111827; }
+.np-lot-title { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: #000; }
 .np-lot-sub   { margin: 0; font-size: 12px; color: #9ca3af; }
 
 .np-add-lot-btn {
@@ -792,7 +792,7 @@
 
 .np-summary-row:last-child { border-bottom: none; }
 .np-summary-row span   { color: #6b7280; }
-.np-summary-row strong { color: #111827; font-weight: 700; }
+.np-summary-row strong { color: #000; font-weight: 700; }
 
 .np-submit-wrap {
     display: flex;
@@ -877,7 +877,7 @@
 .np-toast-icon-error   { background: #fef2f2; color: #dc2626; }
 .np-toast-icon-success { background: #f0fdf4; color: #10b981; }
 
-.np-toast-left p { margin: 0; font-size: 13px; font-weight: 500; color: #111827; line-height: 1.4; }
+.np-toast-left p { margin: 0; font-size: 13px; font-weight: 500; color: #000; line-height: 1.4; }
 
 .np-toast-close {
     width: 26px;
@@ -905,6 +905,13 @@
 ═══════════════════════════════════════════════════════ */
 
 @media (max-width: 640px) {
+    .np-header h1 { margin: 0 0 4px; font-size: 15px; }
+    .np-card-body {
+        padding: 20px 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
     .np-images-grid { grid-template-columns: repeat(3, 1fr); }
     .np-two-col { grid-template-columns: 1fr; }
     .np-combo-content { flex-direction: column; }

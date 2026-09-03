@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import {
     FiSearch, FiShoppingBag, FiPhone, FiMapPin, FiCheck, FiX,
-    FiTruck, FiMessageCircle, FiCopy, FiChevronRight, FiLoader,
-    FiPackage as FiBox,
+    FiMessageCircle, FiLoader, FiPackage as FiBox,
 } from "react-icons/fi";
-import { collection,query as firestoreQuery,where,getDocs,updateDoc,doc,getDoc,increment } from "firebase/firestore";
+import { collection, updateDoc, doc, getDoc, increment } from "firebase/firestore";
 import { DB } from "../../../lib/firebaseConfig";
 import { useStore } from "../../../context/StoreContext";
 import { useDashboard } from "../../../context/DashboardContext";
@@ -24,21 +23,19 @@ function timeAgo(timestamp) {
     return `il y a ${Math.floor(h / 24)} j`;
 }
 
-// Derives the 5-state display status from your existing status field
-// plus the new shippingStatus field, without touching your inventory logic.
+// Derives the display status from the order's status field. Without a
+// shipping integration yet, a "done" order is simply "confirmée" until
+// the store owner marks it delivered directly.
 function getDisplayStatus(order) {
     if (order.status === "cancelled") return "annulee";
     if (order.status === "pending") return "en-attente";
-    // status === "done"
     if (order.shippingStatus === "livree") return "livree";
-    if (order.shippingStatus === "expediee") return "expediee";
     return "confirmee";
 }
 
 const STATUS_META = {
     "en-attente": { label: "En attente", cls: "or-badge-pending" },
     confirmee:    { label: "Confirmée",  cls: "or-badge-confirmed" },
-    expediee:     { label: "Expédiée",   cls: "or-badge-shipped" },
     livree:       { label: "Livrée",     cls: "or-badge-delivered" },
     annulee:      { label: "Annulée",    cls: "or-badge-cancelled" },
 };
@@ -115,143 +112,15 @@ function OrderItemsPreview({ items }) {
     );
 }
 
-/* ─── SHIP MODAL ──────────────────────────────────────── */
-
-function ShipModal({ orders, connections, onClose, onDone }) {
-    const active = connections.filter((c) => c.active);
-    const [carrierId, setCarrierId] = useState(active[0]?.id ?? "");
-    const [loading, setLoading] = useState(false);
-    const [done, setDone] = useState(false);
-
-    const submit = async () => {
-        const carrier = active.find((c) => c.id === carrierId);
-        if (!carrier) return;
-        setLoading(true);
-        try {
-            await Promise.all(
-                orders.map((o) => {
-                    const tracking = `${carrier.provider?.toUpperCase() || "TRK"}-${Math.random()
-                        .toString(36)
-                        .slice(2, 10)
-                        .toUpperCase()}`;
-                    return updateDoc(doc(DB, "orders", o.id), {
-                        shippingStatus: "expediee",
-                        carrierId: carrier.id,
-                        carrierName: carrier.label,
-                        tracking,
-                    });
-                })
-            );
-            setLoading(false);
-            setDone(true);
-            setTimeout(onDone, 1100);
-        } catch (err) {
-            console.error(err);
-            setLoading(false);
-            alert("Erreur lors de l'expédition. Réessayez.");
-        }
-    };
-
-    return (
-        <div className="or-modal-backdrop" onClick={onClose}>
-            <div className="or-modal" onClick={(e) => e.stopPropagation()}>
-                {done ? (
-                    <div className="or-modal-done">
-                        <div className="or-modal-done-icon"><FiCheck size={22} /></div>
-                        <p className="or-modal-done-title">
-                            {orders.length} commande{orders.length > 1 ? "s" : ""} transmise
-                            {orders.length > 1 ? "s" : ""} au transporteur
-                        </p>
-                        <p className="or-modal-done-sub">
-                            Les numéros de suivi ont été générés automatiquement.
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="or-modal-top">
-                            <div>
-                                <h3>Expédier {orders.length} commande{orders.length > 1 ? "s" : ""}</h3>
-                                <p>Choisissez le transporteur qui prendra en charge le colis.</p>
-                            </div>
-                            <button className="or-modal-close" onClick={onClose} aria-label="Fermer">
-                                <FiX size={16} />
-                            </button>
-                        </div>
-
-                        {active.length === 0 ? (
-                            <div className="or-modal-empty">
-                                <FiTruck size={22} />
-                                <p>Aucun transporteur actif</p>
-                                <span>Connectez une société de livraison pour expédier vos commandes.</span>
-                                <a href="/dashboard/shipping" className="or-btn-primary-full">
-                                    <FiTruck size={14} /> Aller à la livraison
-                                </a>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="or-carrier-list">
-                                    {active.map((c) => (
-                                        <label
-                                            key={c.id}
-                                            className={`or-carrier-option ${carrierId === c.id ? "or-carrier-option-selected" : ""}`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="carrier"
-                                                checked={carrierId === c.id}
-                                                onChange={() => setCarrierId(c.id)}
-                                            />
-                                            <div>
-                                                <p className="or-carrier-name">{c.label}</p>
-                                                <p className="or-carrier-meta">
-                                                    {c.fee != null ? `${c.fee} DT / colis` : ""}
-                                                    {c.fee != null && c.delay ? " · " : ""}
-                                                    {c.delay || ""}
-                                                </p>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                                <div className="or-modal-actions">
-                                    <button className="or-btn-secondary" onClick={onClose}>Annuler</button>
-                                    <button
-                                        className="or-btn-primary"
-                                        onClick={submit}
-                                        disabled={loading || !carrierId}
-                                    >
-                                        {loading ? "Transmission…" : "Confirmer l'expédition"}
-                                    </button>
-                                </div>
-                            </>
-                        )}
-                    </>
-                )}
-            </div>
-        </div>
-    );
-}
-
 /* ─── ORDER ROW ───────────────────────────────────────── */
 
-function OrderRow({ order, selected, canSelect, onToggleSelect, actionLoading, onStatusChange, onShip, onDeliver }) {
+function OrderRow({ order, actionLoading, onStatusChange, onDeliver }) {
     const status = getDisplayStatus(order);
     const isLoading = actionLoading === order.id;
 
     return (
         <div className="or-row-card">
             <div className="or-row-main">
-                {canSelect ? (
-                    <input
-                        type="checkbox"
-                        className="or-checkbox"
-                        checked={selected}
-                        onChange={() => onToggleSelect(order.id)}
-                        aria-label={`Sélectionner ${order.id}`}
-                    />
-                ) : (
-                    <span className="or-checkbox-spacer" />
-                )}
-
                 <div className="or-row-info">
                     <div className="or-row-title-line">
                         <StatusBadge status={status} />
@@ -269,20 +138,6 @@ function OrderRow({ order, selected, canSelect, onToggleSelect, actionLoading, o
                             <FiPhone size={11} /> {order.clientPhone || "—"}
                         </span>
                     </div>
-                    {order.carrierName && (
-                        <div className="or-tracking-chip">
-                            <FiTruck size={13} />
-                            <span className="or-tracking-carrier">{order.carrierName}</span>
-                            <span className="or-tracking-num">{order.tracking}</span>
-                            <button
-                                className="or-copy-btn"
-                                onClick={() => navigator.clipboard?.writeText(order.tracking || "")}
-                                aria-label="Copier le numéro de suivi"
-                            >
-                                <FiCopy size={12} />
-                            </button>
-                        </div>
-                    )}
                 </div>
 
                 <div className="or-row-actions-col">
@@ -303,9 +158,6 @@ function OrderRow({ order, selected, canSelect, onToggleSelect, actionLoading, o
                             </>
                         )}
                         {status === "confirmee" && (
-                            <ActionBtn primary icon={FiTruck} label="Expédier" onClick={() => onShip([order.id])} />
-                        )}
-                        {status === "expediee" && (
                             <ActionBtn
                                 primary icon={FiBox} label="Marquer livrée"
                                 disabled={isLoading} loading={isLoading}
@@ -349,27 +201,8 @@ export default function OrdersPage() {
 
     const [query, setQuery] = useState("");
     const [filter, setFilter] = useState("all");
-    const [selected, setSelected] = useState([]);
-    const [shipTarget, setShipTarget] = useState(null);
     const [actionLoading, setActionLoading] = useState(null);
-    const [connections, setConnections] = useState([]);
     const [toast, setToast] = useState(null);
-
-    /* Load active shipping connections for the ship modal */
-    useEffect(() => {
-        if (!store?.id) return;
-        (async () => {
-            try {
-                const q = firestoreQuery(collection(DB, "shippingConnections"), where("storeId", "==", store.id));
-                const snap = await getDocs(q);
-                setConnections(snap.docs.map((d) => ({ id: d.id, active: true, ...d.data() })));
-            } catch (err) {
-                console.error(err);
-            }
-        })();
-    }, [store?.id]);
-
-    const activeCarriers = connections.filter((c) => c.active);
 
     const filtered = useMemo(() => {
         const q = query.toLowerCase();
@@ -392,31 +225,28 @@ export default function OrdersPage() {
     }, [orders, query, filter]);
 
     const counts = useMemo(() => {
-        const c = { all: orders.length, "en-attente": 0, confirmee: 0, expediee: 0, livree: 0, annulee: 0 };
+        const c = { all: orders.length, "en-attente": 0, confirmee: 0, livree: 0, annulee: 0 };
         orders.forEach((o) => { c[getDisplayStatus(o)] = (c[getDisplayStatus(o)] || 0) + 1; });
         return c;
     }, [orders]);
 
-    const shippable = filtered.filter((o) => getDisplayStatus(o) === "confirmee");
-    const selectedShippable = selected.filter((id) => shippable.some((o) => o.id === id));
-    const allSelected = shippable.length > 0 && selectedShippable.length === shippable.length;
-
-    const toggleSelect = (id) =>
-        setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
-
     /* STATUS CHANGE — inventory logic fully preserved, plus stats.ordersCount tracking */
-    const setStatuss = async (order, newStatus) => {
+    const setStatus = async (order, newStatus) => {
         try {
             setActionLoading(order.id);
+            const missingProducts = [];
 
             if (newStatus === "done" && !order.inventoryUpdated) {
                 for (const item of order.items || []) {
                     const productRef = doc(DB, "products", item.productId);
                     const productSnap = await getDoc(productRef);
-                    if (!productSnap.exists()) continue;
+                    if (!productSnap.exists()) {
+                        missingProducts.push(item.productName || item.productId);
+                        continue;
+                    }
                     const productData = productSnap.data();
 
-                    const updates = {"stats.ordersCount": increment(Number(item.quantity || 0))};
+                    const updates = { "stats.ordersCount": increment(Number(item.quantity || 0)) };
 
                     if (item.trackInventory) {
                         if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
@@ -440,10 +270,13 @@ export default function OrdersPage() {
                 for (const item of order.items || []) {
                     const productRef = doc(DB, "products", item.productId);
                     const productSnap = await getDoc(productRef);
-                    if (!productSnap.exists()) continue;
+                    if (!productSnap.exists()) {
+                        missingProducts.push(item.productName || item.productId);
+                        continue;
+                    }
                     const productData = productSnap.data();
 
-                    const updates = {"stats.ordersCount": increment(-Number(item.quantity || 0)),};
+                    const updates = { "stats.ordersCount": increment(-Number(item.quantity || 0)) };
 
                     if (item.trackInventory) {
                         if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
@@ -465,13 +298,19 @@ export default function OrdersPage() {
                     status: newStatus,
                     inventoryUpdated: false,
                     shippingStatus: null,
-                    carrierId: null,
-                    carrierName: null,
-                    tracking: null,
                 });
 
             } else {
                 await updateDoc(doc(DB, "orders", order.id), { status: newStatus });
+            }
+
+            if (missingProducts.length > 0) {
+                setToast({
+                    type: "warning",
+                    message: missingProducts.length === 1
+                        ? `Le produit "${missingProducts[0]}" n'existe plus. Son compteur de ventes n'a pas été mis à jour.`
+                        : `${missingProducts.length} produits de cette commande n'existent plus. Leurs compteurs de ventes n'ont pas été mis à jour.`,
+                });
             }
         } catch (err) {
             console.error(err);
@@ -480,99 +319,6 @@ export default function OrdersPage() {
             setActionLoading(null);
         }
     };
-
-    /* STATUS CHANGE — inventory logic fully preserved, plus stats.ordersCount tracking */
-    const setStatus = async (order, newStatus) => {
-        try {
-            setActionLoading(order.id);
-            const missingProducts = [];
-
-            if (newStatus === "done" && !order.inventoryUpdated) {
-            for (const item of order.items || []) {
-                const productRef = doc(DB, "products", item.productId);
-                const productSnap = await getDoc(productRef);
-                if (!productSnap.exists()) {
-                    missingProducts.push(item.productName || item.productId);
-                    continue;
-                }
-                const productData = productSnap.data();
-
-                const updates = { "stats.ordersCount": increment(Number(item.quantity || 0)) };
-
-                if (item.trackInventory) {
-                    if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
-                        const updatedVariants = (productData.variants || []).map((v) => {
-                            const match = v.options.every((o) => item.selectedOptions[o.name] === o.value);
-                            return match
-                                ? { ...v, inventory: Math.max(0, Number(v.inventory || 0) - Number(item.quantity || 0)) }
-                                : v;
-                        });
-                        updates.variants = updatedVariants;
-                    } else {
-                        updates.inventory = Math.max(0, Number(productData.inventory || 0) - Number(item.quantity || 0));
-                    }
-                }
-
-                await updateDoc(productRef, updates);
-            }
-            await updateDoc(doc(DB, "orders", order.id), { status: newStatus, inventoryUpdated: true });
-
-        } else if (newStatus === "pending" && order.inventoryUpdated) {
-            for (const item of order.items || []) {
-                const productRef = doc(DB, "products", item.productId);
-                const productSnap = await getDoc(productRef);
-                if (!productSnap.exists()) {
-                    missingProducts.push(item.productName || item.productId);
-                    continue;
-                }
-                const productData = productSnap.data();
-
-                const updates = { "stats.ordersCount": increment(-Number(item.quantity || 0)) };
-
-                if (item.trackInventory) {
-                    if (item.selectedOptions && Object.keys(item.selectedOptions).length > 0) {
-                        const updatedVariants = (productData.variants || []).map((v) => {
-                            const match = v.options.every((o) => item.selectedOptions[o.name] === o.value);
-                            return match
-                                ? { ...v, inventory: Number(v.inventory || 0) + Number(item.quantity || 0) }
-                                : v;
-                        });
-                        updates.variants = updatedVariants;
-                    } else {
-                        updates.inventory = Number(productData.inventory || 0) + Number(item.quantity || 0);
-                    }
-                }
-
-                await updateDoc(productRef, updates);
-            }
-            await updateDoc(doc(DB, "orders", order.id), {
-                status: newStatus,
-                inventoryUpdated: false,
-                shippingStatus: null,
-                carrierId: null,
-                carrierName: null,
-                tracking: null,
-            });
-
-        } else {
-            await updateDoc(doc(DB, "orders", order.id), { status: newStatus });
-        }
-
-        if (missingProducts.length > 0) {
-            setToast({
-                type: "warning",
-                message: missingProducts.length === 1
-                    ? `Le produit "${missingProducts[0]}" n'existe plus. Son compteur de ventes n'a pas été mis à jour.`
-                    : `${missingProducts.length} produits de cette commande n'existent plus. Leurs compteurs de ventes n'ont pas été mis à jour.`,
-            });
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Une erreur est survenue. Veuillez réessayer.");
-    } finally {
-        setActionLoading(null);
-    }
-};
 
     const markDelivered = async (order) => {
         try {
@@ -609,24 +355,7 @@ export default function OrdersPage() {
                         {orders.length} commande{orders.length !== 1 ? "s" : ""} reçue{orders.length !== 1 ? "s" : ""}
                     </p>
                 </div>
-                <a href="/dashboard/shipping" className="or-btn-outline">
-                    <FiTruck size={14} /> Transporteurs ({activeCarriers.length})
-                </a>
             </div>
-
-            {/* NO CARRIER BANNER */}
-            {activeCarriers.length === 0 && (
-                <div className="or-banner">
-                    <span className="or-banner-icon"><FiTruck size={20} /></span>
-                    <div className="or-banner-info">
-                        <p>Connectez un transporteur pour expédier en un clic</p>
-                        <span>Transmettez vos commandes directement à vos transporteurs connectés.</span>
-                    </div>
-                    <a href="/dashboard/shipping" className="or-btn-primary-full">
-                        Configurer la livraison <FiChevronRight size={14} />
-                    </a>
-                </div>
-            )}
 
             {/* FILTERS */}
             <div className="or-filters-row">
@@ -640,7 +369,7 @@ export default function OrdersPage() {
                     />
                 </div>
                 <div className="or-tabs">
-                    {["all", "en-attente", "confirmee", "expediee", "livree", "annulee"].map((k) => (
+                    {["all", "en-attente", "confirmee", "livree", "annulee"].map((k) => (
                         <button
                             key={k}
                             className={`or-tab ${filter === k ? "or-tab-active" : ""}`}
@@ -653,42 +382,14 @@ export default function OrdersPage() {
                 </div>
             </div>
 
-            {/* BULK BAR */}
-            {shippable.length > 0 && (
-                <div className="or-bulk-bar">
-                    <label className="or-bulk-checkbox">
-                        <input
-                            type="checkbox"
-                            checked={allSelected}
-                            onChange={(e) => setSelected(e.target.checked ? shippable.map((o) => o.id) : [])}
-                        />
-                        Tout sélectionner ({shippable.length} à expédier)
-                    </label>
-                    {selectedShippable.length > 0 && (
-                        <>
-                            <span className="or-bulk-count">
-                                {selectedShippable.length} sélectionnée{selectedShippable.length > 1 ? "s" : ""}
-                            </span>
-                            <button className="or-btn-primary or-bulk-ship-btn" onClick={() => setShipTarget(selectedShippable)}>
-                                <FiTruck size={14} /> Expédier la sélection
-                            </button>
-                        </>
-                    )}
-                </div>
-            )}
-
             {/* LIST */}
             <div className="or-list">
                 {filtered.map((order) => (
                     <OrderRow
                         key={order.id}
                         order={order}
-                        selected={selected.includes(order.id)}
-                        canSelect={getDisplayStatus(order) === "confirmee"}
-                        onToggleSelect={toggleSelect}
                         actionLoading={actionLoading}
                         onStatusChange={setStatus}
-                        onShip={(ids) => setShipTarget(ids)}
                         onDeliver={markDelivered}
                     />
                 ))}
@@ -701,15 +402,6 @@ export default function OrdersPage() {
                     </div>
                 )}
             </div>
-
-            {shipTarget && (
-                <ShipModal
-                    orders={orders.filter((o) => shipTarget.includes(o.id))}
-                    connections={connections}
-                    onClose={() => setShipTarget(null)}
-                    onDone={() => { setSelected([]); setShipTarget(null); }}
-                />
-            )}
 
             <Toast toast={toast} onClose={() => setToast(null)} />
         </div>

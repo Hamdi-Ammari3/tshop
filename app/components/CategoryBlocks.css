@@ -261,9 +261,11 @@
 
 .category-blocks{
 
-    margin:50px auto;
+    margin:30px auto;
 
     padding: 4px;
+
+    padding:0 10px;
 }
 
 .category-blocks-grid{

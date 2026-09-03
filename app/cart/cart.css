@@ -454,7 +454,7 @@
     .ct-summary-card {
         padding: 14px 5px;
     }
-    .ct-summary-total h2 {
+    .ct-summary-total h2,.ct-total-price,.ct-empty h2 {
         font-size: 15px;
     }
 }

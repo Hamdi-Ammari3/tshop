@@ -4,6 +4,13 @@
     min-height: 100vh;
     background: #fff;
     padding-bottom: 80px;
+    overflow-x: hidden;
+}
+
+.ob-page *,
+.ob-page *::before,
+.ob-page *::after {
+    box-sizing: border-box;
 }
 
 .ob-loading {
@@ -1107,7 +1114,20 @@
     .ob-form-card { padding: 20px; }
     .ob-modal { padding: 22px; border-radius: 20px; }
     .ob-otp-box { height: 52px; font-size: 20px; }
-    .ob-hero-inner h1 { font-size: 22px; }
+    .ob-hero-inner h1,.ob-form-head h2 { font-size: 15px; }
+    .ob-grid {
+        padding: 28px 4px 0;
+    }
+    .ob-otp-row {
+        gap: 5px;
+    }
+    .ob-otp-box {
+        height: 46px;
+        font-size: 17px;
+    }
+    .ob-submit-btn {
+        height: 45px;
+    }
 }
 
 /* ─── ACCOUNT CARD (Case 3 — logged-in user) ───────── */
@@ -1172,4 +1192,27 @@
     font-size: 12px;
     font-weight: 700;
     flex-shrink: 0;
+}
+
+.ob-input-wrap input,
+.ob-phone-wrap input,
+.ob-domain-wrap input {
+    min-width: 0;
+}
+
+.ob-account-info {
+    min-width: 0;
+}
+
+.ob-store-meta {
+    min-width: 0;
+}
+
+.ob-browser-bar {
+    min-width: 0;
+}
+
+.ob-logo-actions {
+    min-width: 0;
+    flex: 1;
 }

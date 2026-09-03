@@ -15,6 +15,7 @@ export default function CategoryBlocks({ categories = [] }) {
 
         <section className="category-blocks">
 
+            {/* 
             <div className="category-blocks-header">
 
                 <div>
@@ -30,6 +31,7 @@ export default function CategoryBlocks({ categories = [] }) {
                 </div>
 
             </div>
+            */}
 
             <div className="category-blocks-grid">
 

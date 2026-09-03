@@ -2,7 +2,7 @@
 .store-page {
   --sp-primary: #006de2;
   --sp-primary-soft: rgba(0, 109, 226, 0.1);
-  --sp-secondary: #111827;
+  --sp-secondary: #000;
   --sp-border: #e5e7eb;
   --sp-text-muted: #6b7280;
 
@@ -65,13 +65,13 @@
 
 .store-brand-info { min-width: 0; }
 .store-brand-name {
-    margin: 0;
-    font-size: 14px;
-    font-weight: 800;
-    color: #111827;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .store-brand-domain {
     margin: 2px 0 0;
@@ -106,7 +106,7 @@
     background: transparent;
     height: 42px;
     font-size: 14px;
-    color: #111827;
+    color: #000;
 }
 
 /* MOBILE SEARCH */
@@ -148,7 +148,7 @@
     padding: 9px 14px;
     font-size: 12px;
     font-weight: 700;
-    color: #111827;
+    color: #000;
     text-decoration: none;
 }
 @media (min-width: 640px) { .store-call-btn { display: inline-flex; } }
@@ -189,7 +189,7 @@
     width: 20px;
     height: 20px;
     border-radius: 999px;
-    background: #111827;
+    background: #000;
     color: #fff;
     display: flex;
     align-items: center;
@@ -247,7 +247,7 @@
 
 .store-hero-title {
   margin: 16px 0 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1.15;
   max-width: 640px;
@@ -315,7 +315,12 @@
   font-size: 12px;
   color: rgba(255,255,255,0.75);
 }
-.store-hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.store-hero-meta span { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-size: 13px;
+}
 .store-hero-meta svg { color: var(--sp-primary); }
 
 /* TRUST BAR */
@@ -623,6 +628,8 @@
   .store-hero {
     padding: 24px 10px;
   }
+
+  .store-hero-meta span { display: inline-flex; align-items: center; gap: 6px; }
   .store-trust-bar { padding: 14px 0; }
 
   .store-trust-track {
@@ -646,7 +653,7 @@
     padding: 18px 10px;
   }
 
-  .store-products-top h2,.store-empty h3 {
+  .store-products-top h2,.store-empty h3,.store-product-price span {
     font-size: 15px;
   }
 

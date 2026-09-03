@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useMarketplaceCart } from "../../context/MarketplaceCartContext";
 import { signOut } from "firebase/auth";
@@ -14,10 +15,9 @@ import './navbar.css';
 
 export default function Navbar() {
 
+    const router = useRouter();
     const { user, loading } = useAuth();
     const { cartCount } = useMarketplaceCart();
-
-    console.log(user)
 
     const [search, setSearch] = useState("");
     const [menuOpen, setMenuOpen] = useState(false);
@@ -32,6 +32,13 @@ export default function Navbar() {
     const handleLogout = async () => {
         setMenuOpen(false);
         await signOut(auth);
+    };
+
+    const handleSearchSubmit = (e) => {
+        e.preventDefault();
+        const trimmed = search.trim();
+        if (!trimmed) return;
+        router.push(`/search?q=${encodeURIComponent(trimmed)}`);
     };
 
     // Close menu on outside click
@@ -64,14 +71,14 @@ export default function Navbar() {
                 </Link>
 
                 {/* SEARCH */}
-                <form className="navbar-search" onSubmit={(e) => e.preventDefault()}>
+                <form className="navbar-search" onSubmit={handleSearchSubmit}>
                     <input
                         type="search"
                         placeholder="Rechercher un produit, une boutique..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
-                    <button type="submit"><FiSearch /></button>
+                    <button type="submit" aria-label="Rechercher"><FiSearch /></button>
                 </form>
 
                 {/* RIGHT */}
@@ -164,13 +171,6 @@ export default function Navbar() {
                         </>
 
                     )}
-
-                    {/* NOTIFICATIONS 
-                    <button className="navbar-icon-btn">
-                        <FiBell />
-                        <span className="navbar-dot" />
-                    </button>
-                    */}
 
                     {/* CART */}
                     <Link href="/cart" className="navbar-icon-btn">

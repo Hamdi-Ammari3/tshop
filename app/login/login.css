@@ -7,6 +7,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow-x: hidden;
+    box-sizing: border-box;
+}
+
+.login-page *,
+.login-page *::before,
+.login-page *::after {
+    box-sizing: border-box;
 }
 
 .login-loading-page {
@@ -37,7 +45,7 @@
 /* ─── LEFT PANEL ────────────────────────────────────── */
 
 .login-panel {
-    background: #111827;
+    background: #000;
     padding: 40px 36px;
     display: flex;
     flex-direction: column;
@@ -144,6 +152,8 @@
     align-items: center;
     justify-content: center;
     padding: 36px 36px;
+    min-width: 0;
+    width: 100%;
 }
 
 .login-card {
@@ -181,7 +191,7 @@
 
 .login-tab-active {
     background: #fff;
-    color: #111827;
+    color: #000;
     box-shadow: 0 1px 4px rgba(0,0,0,0.10);
 }
 
@@ -203,7 +213,7 @@
     margin: 0;
     font-size: 22px;
     font-weight: 800;
-    color: #111827;
+    color: #000;
     letter-spacing: -0.3px;
 }
 
@@ -278,10 +288,11 @@
     border: none;
     outline: none;
     font-size: 14px;
-    color: #111827;
+    color: #000;
     background: transparent;
     padding-right: 14px;
     font-family: inherit;
+    min-width: 0;
 }
 
 .login-input-wrap input::placeholder { color: #d1d5db; }
@@ -377,7 +388,7 @@
     transition: color 0.2s;
 }
 
-.login-back-step:hover { color: #111827; }
+.login-back-step:hover { color: #000; }
 
 .login-otp-icon {
     width: 52px;
@@ -404,7 +415,7 @@
     text-align: center;
     font-size: 22px;
     font-weight: 700;
-    color: #111827;
+    color: #000;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
     min-width: 0;
@@ -459,7 +470,7 @@
     border: 2px solid #bbf7d0;
 }
 
-.login-success h2 { font-size: 22px; font-weight: 800; color: #111827; margin: 0; }
+.login-success h2 { font-size: 22px; font-weight: 800; color: #000; margin: 0; }
 .login-success p  { font-size: 13px; color: #6b7280; margin: 0; }
 
 .login-success-badge {
@@ -483,11 +494,14 @@
 /* ─── RESPONSIVE ─────────────────────────────────────── */
 
 @media (max-width: 768px) {
-    .login-page { padding: 16px; align-items: flex-start; padding-top: 32px; }
+    .login-page { padding: 30px 10px; align-items: flex-start;overflow-y: auto; }
     .login-grid { grid-template-columns: 1fr; border-radius: 22px; }
     .login-panel { display: none; }
-    .login-card-wrapper { padding: 26px 22px 32px; }
-    .login-card-header h2 { font-size: 20px; }
-    .login-otp-input { height: 50px; font-size: 20px; }
+    .login-card-wrapper { padding: 20px 8px 28px; }
+    .login-phone-prefix { padding: 0 8px; font-size: 12px; }
+    .login-input-icon { margin: 0 6px 0 10px; }
+    .login-card-header h2 { font-size: 15px; }
+    .login-otp-input { height: 45px; width: 30px; font-size: 17px; }
     .login-btn-primary { height: 46px; }
+    .login-otp-row {gap: 5px;}
 }
